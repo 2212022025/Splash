@@ -116,17 +116,26 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a] relative overflow-hidden">
-      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[150px] rounded-full"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-accent/5 blur-[150px] rounded-full"></div>
+      {/* Brand Background Image */}
+      <div className="absolute inset-0 z-0 opacity-10">
+        <img 
+          src="https://files.catbox.moe/d9bnza.jpg" 
+          alt="Brand Background" 
+          className="w-full h-full object-cover grayscale"
+        />
+      </div>
 
-      <div className="mb-8 flex flex-col items-center gap-2 animate-in fade-in zoom-in duration-700">
+      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[150px] rounded-full z-[1]"></div>
+      <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-accent/5 blur-[150px] rounded-full z-[1]"></div>
+
+      <div className="mb-8 flex flex-col items-center gap-2 animate-in fade-in zoom-in duration-700 relative z-10">
         <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center border border-white/10 neon-glow">
           <Zap size={32} className="text-accent" />
         </div>
         <h1 className="font-headline text-5xl font-extrabold tracking-tighter italic uppercase text-white">Splash</h1>
       </div>
 
-      <Card className="w-full max-w-md bg-[#161616]/80 backdrop-blur-xl border-white/5 shadow-2xl relative overflow-hidden animate-in slide-in-from-bottom-10 duration-500">
+      <Card className="w-full max-w-md bg-[#161616]/80 backdrop-blur-xl border-white/5 shadow-2xl relative overflow-hidden animate-in slide-in-from-bottom-10 duration-500 z-10">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent"></div>
         <CardHeader className="text-center pt-8 pb-4">
           <CardTitle className="font-headline text-2xl text-white uppercase tracking-tight">
@@ -205,7 +214,7 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
         </CardFooter>
       </Card>
       
-      <p className="mt-8 text-[9px] text-white/20 uppercase tracking-[0.4em]">SV-12 Pro Active &bull; VLF-TEC</p>
+      <p className="mt-8 text-[9px] text-white/20 uppercase tracking-[0.4em] relative z-10">SV-12 Pro Active &bull; VLF-TEC</p>
     </div>
   );
 }
