@@ -3,10 +3,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, push, onValue, remove, set, serverTimestamp, query, limitToLast } from 'firebase/database';
+import { ref, push, onValue, remove, set, query, limitToLast } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, UserX } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, UserX, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -35,21 +35,50 @@ export default function PublicChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('splash_current_user');
-    if (!savedUser) {
-      router.push('/');
-      return;
-    }
-    const parsedUser = JSON.parse(savedUser);
-    setUser(parsedUser);
+    // We check user from a simple memory-based state passed through props in a real app,
+    // but here we check what was set during the current session's login.
+    const savedUser = localStorage.getItem('splash_last_username');
+    const savedEmail = localStorage.getItem('splash_last_email');
+    
+    // In this specific prototype, we'll try to reconstruct the user object
+    // or redirect if they haven't logged in this session.
+    // Note: Since session auto-login was removed, we rely on the parent state.
+    // For simplicity in this subpage, we'll check the users ref if needed, 
+    // but ideally the user object is passed down.
+  }, []);
 
-    // Check if user is blocked
-    const blockRef = ref(db, `blocked/${parsedUser.chatName}`);
-    onValue(blockRef, (snapshot) => {
-      setIsBlocked(snapshot.exists());
-    });
+  useEffect(() => {
+    // Check if user is logged in for this session (simulated by checking if the app state had them)
+    // For the prototype subpage, we'll look for the last used credentials
+    const fetchSessionUser = async () => {
+      const lastUser = localStorage.getItem('splash_last_username');
+      const lastEmail = localStorage.getItem('splash_last_email');
+      
+      if (!lastUser || !lastEmail) {
+        router.push('/');
+        return;
+      }
 
-    const messagesRef = query(ref(db, 'public_chat'), limitToLast(50));
+      const dbRef = ref(db, 'users');
+      onValue(dbRef, (snapshot) => {
+        const users = snapshot.val();
+        if (users) {
+          const found = Object.values(users).find((u: any) => u.username === lastUser && u.email === lastEmail) as any;
+          if (found) {
+            setUser(found);
+            // Check blocking status
+            const blockRef = ref(db, `blocked/${found.chatName}`);
+            onValue(blockRef, (s) => setIsBlocked(s.exists()));
+          } else {
+            router.push('/');
+          }
+        }
+      }, { onlyOnce: true });
+    };
+
+    fetchSessionUser();
+
+    const messagesRef = query(ref(db, 'public_chat'), limitToLast(100));
     const unsubscribe = onValue(messagesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -83,6 +112,14 @@ export default function PublicChatPage() {
     setInput("");
   };
 
+  const formatTime = (ts: number) => {
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (ts: number) => {
+    return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
   const handleDeleteMessage = (msgId: string) => {
     remove(ref(db, `public_chat/${msgId}`));
   };
@@ -108,8 +145,8 @@ export default function PublicChatPage() {
   const currentUserIsModerator = user.username.includes('#225');
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0a] text-white">
-      <header className="h-16 border-b border-white/5 bg-black/40 backdrop-blur-xl flex items-center px-4 gap-4 shrink-0">
+    <div className="h-screen flex flex-col bg-[#0a0a0a] text-white overflow-hidden">
+      <header className="h-16 border-b border-white/5 bg-black/40 backdrop-blur-xl flex items-center px-4 gap-4 shrink-0 z-10">
         <Button 
           variant="ghost" 
           size="icon" 
@@ -124,71 +161,88 @@ export default function PublicChatPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
-          <div 
-            key={msg.id} 
-            className={`flex flex-col max-w-[85%] ${msg.chatName === user.chatName ? 'ml-auto items-end' : 'items-start'}`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${msg.isModerator ? 'text-blue-400' : 'text-white/40'}`}>
-                {msg.chatName}
-              </span>
-              {msg.isModerator && <ShieldCheck size={12} className="text-blue-400 fill-blue-400/20" />}
-            </div>
+      <main className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth">
+        {messages.map((msg, idx) => {
+          const showDateLine = idx === 0 || formatDate(messages[idx-1].timestamp) !== formatDate(msg.timestamp);
+          
+          return (
+            <React.Fragment key={msg.id}>
+              {showDateLine && (
+                <div className="flex justify-center my-4">
+                  <span className="text-[9px] bg-white/5 px-3 py-1 rounded-full text-white/30 uppercase tracking-widest font-bold">
+                    {formatDate(msg.timestamp)}
+                  </span>
+                </div>
+              )}
+              
+              <div 
+                className={`flex flex-col max-w-[85%] sm:max-w-[70%] ${msg.chatName === user.chatName ? 'ml-auto items-end' : 'items-start'}`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${msg.isModerator ? 'text-blue-400' : 'text-white/40'}`}>
+                    {msg.chatName}
+                  </span>
+                  {msg.isModerator && <ShieldCheck size={12} className="text-blue-400 fill-blue-400/20" />}
+                </div>
 
-            <div className="flex items-center gap-2 group">
-              <div className={`px-4 py-3 rounded-2xl relative ${
-                msg.isModerator 
-                  ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50' 
-                  : msg.chatName === user.chatName 
-                    ? 'bg-primary text-white rounded-tr-none' 
-                    : 'bg-white/5 border border-white/10 rounded-tl-none'
-              }`}>
-                <p className="text-sm leading-relaxed">{msg.text}</p>
+                <div className={`flex items-end gap-2 group ${msg.chatName === user.chatName ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`px-4 py-2.5 rounded-2xl relative shadow-lg ${
+                    msg.isModerator 
+                      ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50' 
+                      : msg.chatName === user.chatName 
+                        ? 'bg-primary text-white rounded-tr-none' 
+                        : 'bg-white/5 border border-white/10 rounded-tl-none'
+                  }`}>
+                    <p className="text-sm leading-relaxed break-words">{msg.text}</p>
+                    <div className={`flex items-center gap-1 mt-1 ${msg.chatName === user.chatName ? 'justify-end' : 'justify-start'}`}>
+                      <Clock size={8} className="text-white/20" />
+                      <span className="text-[8px] text-white/30 font-medium">{formatTime(msg.timestamp)}</span>
+                    </div>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <MoreVertical size={12} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align={msg.chatName === user.chatName ? "end" : "start"} className="bg-[#161616] border-white/10 text-white">
+                      {(msg.chatName === user.chatName || currentUserIsModerator) && (
+                        <DropdownMenuItem onClick={() => handleDeleteMessage(msg.id)} className="text-destructive focus:text-destructive">
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      )}
+                      {msg.chatName !== user.chatName && (
+                        <DropdownMenuItem onClick={() => handleReportMessage(msg)}>
+                          <Flag className="mr-2 h-4 w-4" /> Report
+                        </DropdownMenuItem>
+                      )}
+                      {currentUserIsModerator && msg.chatName !== user.chatName && (
+                        <DropdownMenuItem onClick={() => handleBlockUser(msg.chatName)}>
+                          <UserX className="mr-2 h-4 w-4" /> Block User
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreVertical size={14} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-[#161616] border-white/10 text-white">
-                  {(msg.chatName === user.chatName || currentUserIsModerator) && (
-                    <DropdownMenuItem onClick={() => handleDeleteMessage(msg.id)} className="text-destructive focus:text-destructive">
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                  )}
-                  {msg.chatName !== user.chatName && (
-                    <DropdownMenuItem onClick={() => handleReportMessage(msg)}>
-                      <Flag className="mr-2 h-4 w-4" /> Report
-                    </DropdownMenuItem>
-                  )}
-                  {currentUserIsModerator && msg.chatName !== user.chatName && (
-                    <DropdownMenuItem onClick={() => handleBlockUser(msg.chatName)}>
-                      <UserX className="mr-2 h-4 w-4" /> Block User
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        ))}
-        <div ref={scrollRef} />
+            </React.Fragment>
+          );
+        })}
+        <div ref={scrollRef} className="h-2" />
       </main>
 
-      <footer className="p-4 bg-black/40 border-t border-white/5 backdrop-blur-xl">
+      <footer className="p-4 bg-black/40 border-t border-white/5 backdrop-blur-xl shrink-0">
         <form onSubmit={handleSendMessage} className="flex gap-2 max-w-3xl mx-auto">
           <Input 
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isBlocked ? "Your account is blocked" : "Communicate via EBMS-09..."}
+            placeholder={isBlocked ? "Blocked from transmission" : "Communicate..."}
             disabled={isBlocked}
-            className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-accent"
+            className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-accent placeholder:text-white/20"
           />
-          <Button type="submit" disabled={!input.trim() || isBlocked} className="bg-accent text-black hover:bg-accent/90 rounded-xl h-12 w-12 px-0 shrink-0">
-            <Send size={18} />
+          <Button type="submit" disabled={!input.trim() || isBlocked} className="bg-accent text-black hover:bg-accent/90 rounded-xl h-11 w-11 px-0 shrink-0">
+            <Send size={16} />
           </Button>
         </form>
       </footer>

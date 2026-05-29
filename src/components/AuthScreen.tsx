@@ -103,7 +103,6 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a] relative overflow-hidden">
-      {/* Background Decor */}
       <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[150px] rounded-full"></div>
       <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-accent/5 blur-[150px] rounded-full"></div>
 
@@ -121,7 +120,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
             {isLogin ? 'Welcome Back' : 'Create Identity'}
           </CardTitle>
           <CardDescription className="font-body text-white/40">
-            {isLogin ? 'Enter your network credentials' : 'Join the Splash decentralized network'}
+            {isLogin ? 'Enter your credentials' : 'Join the Splash network'}
           </CardDescription>
         </CardHeader>
         
@@ -174,7 +173,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
               className="w-full bg-primary hover:bg-primary/90 text-white h-12 rounded-xl font-headline tracking-widest uppercase text-xs mt-4 transition-all duration-300"
               disabled={isLoading}
             >
-              {isLoading ? 'Decrypting...' : (isLogin ? 'Login Network' : 'Initialize Account')}
+              {isLoading ? 'Processing...' : (isLogin ? 'Login' : 'Initialize Account')}
             </Button>
           </form>
         </CardContent>
@@ -185,7 +184,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
             className="text-[10px] text-white/30 hover:text-accent uppercase tracking-widest font-bold transition-colors flex items-center gap-2"
           >
             {isLogin ? (
-              <><PlusCircle size={14} /> Request Access</>
+              <><PlusCircle size={14} /> Create an Account</>
             ) : (
               <><LogIn size={14} /> Existing Node</>
             )}

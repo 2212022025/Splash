@@ -11,31 +11,29 @@ export default function Home() {
   const [user, setUser] = useState<{ username: string; email: string; chatName: string } | null>(null);
 
   useEffect(() => {
-    // Check for existing session
-    const savedUser = localStorage.getItem('splash_current_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        localStorage.removeItem('splash_current_user');
-      }
-    }
-
-    const timer = setTimeout(() => {
+    // Session persistence removed as per request: "already logout not automatically log in"
+    // We only track if the splash has been shown in this browser session
+    const splashShown = sessionStorage.getItem('splash_shown');
+    
+    if (splashShown) {
       setLoading(false);
-    }, 2000);
-
-    return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(() => {
+        setLoading(false);
+        sessionStorage.setItem('splash_shown', 'true');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const handleLoginSuccess = (userData: { username: string; email: string; chatName: string }) => {
-    localStorage.setItem('splash_current_user', JSON.stringify(userData));
+    // Store temporarily in memory for the current session
     setUser(userData);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('splash_current_user');
     setUser(null);
+    sessionStorage.removeItem('splash_shown');
   };
 
   if (loading) {
