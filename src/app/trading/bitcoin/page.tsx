@@ -33,7 +33,7 @@ export default function BitcoinTradingPage() {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Connect Bitcoin  Trader — Improved</title>
+  <title>Connect Bitcoin Trader — Improved</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
     :root{
@@ -228,7 +228,8 @@ export default function BitcoinTradingPage() {
     function formatUSD(n) { return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     function addHistory(side, bet, resultText) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${new Date().toLocaleTimeString()}</td><td>${side}</td><td>${formatUSD(bet)}</td><td>${resultText}</td>`;
+      // Using concatenation to avoid template literal nesting issues in the iframe source
+      tr.innerHTML = '<td>' + new Date().toLocaleTimeString() + '</td><td>' + side + '</td><td>' + formatUSD(bet) + '</td><td>' + resultText + '</td>';
       historyTbody.prepend(tr);
       while (historyTbody.childNodes.length > 60) historyTbody.removeChild(historyTbody.lastChild);
     }
@@ -274,7 +275,7 @@ export default function BitcoinTradingPage() {
       setButtonsEnabled(false);
       roundActive = true;
       resultBanner.classList.add('hidden');
-      outcomeInfo.textContent = `Round: ${side} • Mode: ${modeSelect.value}`;
+      outcomeInfo.textContent = 'Round: ' + side + ' • Mode: ' + modeSelect.value;
 
       usdBalance = Number((usdBalance - bet).toFixed(2));
       updateBalances();
@@ -298,10 +299,10 @@ export default function BitcoinTradingPage() {
       if (win) {
         const payout = Number((bet * PAYOUT_MULTIPLIER).toFixed(2));
         usdBalance = Number((usdBalance + payout).toFixed(2));
-        showResult(true, bet, payout, `Coin win!`);
+        showResult(true, bet, payout, 'Coin win!');
         addHistory(side, bet, 'WIN');
       } else {
-        showResult(false, bet, null, `Coin lose`);
+        showResult(false, bet, null, 'Coin lose');
         addHistory(side, bet, 'LOSE');
       }
       updateBalances();
@@ -312,14 +313,14 @@ export default function BitcoinTradingPage() {
       const entryPrice = chartData.datasets[0].data.slice(-1)[0];
       const ticksTotal = Math.max(2, Math.round(ROUND_SECONDS * TICKS_PER_SECOND));
       let ticksDone = 0;
-      countdownEl.textContent = `Round: ${ROUND_SECONDS}s`;
-      outcomeInfo.textContent = `Entry: $${Number(entryPrice).toFixed(2)} — simulating...`;
+      countdownEl.textContent = 'Round: ' + ROUND_SECONDS + 's';
+      outcomeInfo.textContent = 'Entry: $' + Number(entryPrice).toFixed(2) + ' — simulating...';
 
       await new Promise(resolve => {
         const int = setInterval(() => {
           ticksDone++;
           const remaining = Math.max(0, ROUND_SECONDS - Math.floor(ticksDone / TICKS_PER_SECOND));
-          countdownEl.textContent = `Round: ${remaining}s`;
+          countdownEl.textContent = 'Round: ' + remaining + 's';
           if (ticksDone >= ticksTotal) {
             clearInterval(int);
             resolve();
@@ -334,25 +335,25 @@ export default function BitcoinTradingPage() {
       if (win) {
         const payout = Number((bet * PAYOUT_MULTIPLIER).toFixed(2));
         usdBalance = Number((usdBalance + payout).toFixed(2));
-        showResult(true, bet, payout, `Final $${Number(finalPrice).toFixed(2)}`);
+        showResult(true, bet, payout, 'Final $' + Number(finalPrice).toFixed(2));
         addHistory(side, bet, 'WIN');
       } else {
-        showResult(false, bet, null, `Final $${Number(finalPrice).toFixed(2)}`);
+        showResult(false, bet, null, 'Final $' + Number(finalPrice).toFixed(2));
         addHistory(side, bet, 'LOSE');
       }
       
       updateBalances();
       updateFirebaseBalance();
-      outcomeInfo.textContent = `Last final: $${Number(finalPrice).toFixed(2)} • Entry $${Number(entryPrice).toFixed(2)}`;
+      outcomeInfo.textContent = 'Last final: $' + Number(finalPrice).toFixed(2) + ' • Entry $' + Number(entryPrice).toFixed(2);
     }
     
     function showResult(win, bet, payout, subtitle) {
       if (win) {
-        resultBanner.textContent = `YOU WON! +${formatUSD(payout - bet)} • ${subtitle}`;
+        resultBanner.textContent = 'YOU WON! +' + formatUSD(payout - bet) + ' • ' + subtitle;
         resultBanner.style.background = 'linear-gradient(90deg, rgba(22,163,74,0.12), rgba(6,182,212,0.05))';
         resultBanner.style.color = 'var(--good)';
       } else {
-        resultBanner.textContent = `YOU LOST -${formatUSD(bet)} • ${subtitle}`;
+        resultBanner.textContent = 'YOU LOST -' + formatUSD(bet) + ' • ' + subtitle;
         resultBanner.style.background = 'linear-gradient(90deg, rgba(239,68,68,0.08), rgba(247,147,26,0.02))';
         resultBanner.style.color = 'var(--bad)';
       }
