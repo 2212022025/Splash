@@ -44,6 +44,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 
 const ABUSE_WORDS = ["fuck", "bitch", "chutiya", "mc", "bc", "gandu", "madarchod", "fake"];
@@ -87,6 +97,7 @@ export default function SocialSplashPage() {
   const [viewingCommentsFor, setViewingCommentsFor] = useState<SocialPost | null>(null);
   const [view, setView] = useState<'feed' | 'analytics' | 'highlights'>('feed');
   const [editingPost, setEditingPost] = useState<{id: string, text: string} | null>(null);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [isWhiteTheme, setIsWhiteTheme] = useState(false);
   const [reportedPosts, setReportedPosts] = useState<string[]>([]);
   const [tick, setTick] = useState(0);
@@ -310,6 +321,7 @@ export default function SocialSplashPage() {
 
   const handleDeletePost = (postId: string) => {
     remove(ref(db, `social_posts/${postId}`));
+    setPostToDelete(null);
     toast({ title: "Thread Purged" });
   };
 
@@ -496,7 +508,7 @@ export default function SocialSplashPage() {
                           {post.isPrivate ? <Globe className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
                           {post.isPrivate ? 'Make Public' : 'Make Private'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => setPostToDelete(post.id)} className="text-destructive focus:text-destructive">
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </>
@@ -703,6 +715,26 @@ export default function SocialSplashPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!postToDelete} onOpenChange={(open) => !open && setPostToDelete(null)}>
+        <AlertDialogContent className={cn("rounded-3xl", dropdownBg)}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-headline italic">Purge Thread?</AlertDialogTitle>
+            <AlertDialogDescription className={mutedText}>
+              This action cannot be undone. This thread will be permanently removed from the neural network.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Abort</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => postToDelete && handleDeletePost(postToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+            >
+              Confirm Purge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <footer className={cn("fixed bottom-0 left-0 w-full p-4 text-center backdrop-blur-lg border-t z-40", isWhiteTheme ? "bg-white/80 border-gray-200" : "bg-black/60 border-white/5")}>
         <p className={cn("text-[9px] uppercase tracking-[0.6em] font-headline italic opacity-20")}>Neural Social Link &bull; SV-12 Pro Node Active</p>
