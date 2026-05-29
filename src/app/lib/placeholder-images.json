@@ -1,0 +1,11 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "tech-bg",
+      "description": "Abstract tech background with lines and glowing dots",
+      "imageUrl": "https://picsum.photos/seed/splash-tech/1920/1080",
+      "imageHint": "abstract technology"
+    }
+  ]
+}
