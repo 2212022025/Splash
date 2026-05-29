@@ -16,6 +16,8 @@ interface SocialPost {
   imageUrl?: string;
   timestamp: number;
   views: number;
+  targetViews?: number;
+  growthDuration?: number;
 }
 
 export default function PostSharePage() {
@@ -24,6 +26,15 @@ export default function PostSharePage() {
   const [post, setPost] = useState<SocialPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [totalUserViews, setTotalUserViews] = useState(0);
+
+  const getDisplayedViews = (p: SocialPost) => {
+    if (!p.targetViews || !p.timestamp) return p.views || 0;
+    const elapsed = Date.now() - p.timestamp;
+    const duration = p.growthDuration || 86400000;
+    if (elapsed >= duration) return p.targetViews + (p.views || 0);
+    const progress = elapsed / duration;
+    return Math.floor(p.targetViews * progress) + (p.views || 0);
+  };
 
   useEffect(() => {
     if (!params.id) return;
@@ -34,14 +45,13 @@ export default function PostSharePage() {
       if (data) {
         setPost({ id: params.id as string, ...data });
         
-        // Fetch user views for verification badge
         const allPostsRef = ref(db, 'social_posts');
         onValue(allPostsRef, (allSnapshot) => {
           const allData = allSnapshot.val();
           if (allData) {
             const views = Object.values(allData)
               .filter((p: any) => p.chatName === data.chatName)
-              .reduce((acc: number, curr: any) => acc + (curr.views || 0), 0);
+              .reduce((acc: number, curr: any) => acc + getDisplayedViews(curr as SocialPost), 0);
             setTotalUserViews(views);
           }
         }, { onlyOnce: true });
@@ -52,23 +62,14 @@ export default function PostSharePage() {
     return () => unsubscribe();
   }, [params.id]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  if (loading) return null;
 
   if (!post) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center p-6 text-center space-y-4">
         <Share2 size={48} className="text-white/20" />
         <h1 className="text-2xl font-headline font-bold text-white">Thread Not Found</h1>
-        <p className="text-white/40 max-w-xs">This node may have been purged or moved within the network.</p>
-        <Button onClick={() => router.push('/trading/social-splash')} variant="outline" className="rounded-full">
-          Back to Feed
-        </Button>
+        <Button onClick={() => router.push('/trading/social-splash')} variant="outline" className="rounded-full">Back Feed</Button>
       </div>
     );
   }
@@ -114,7 +115,7 @@ export default function PostSharePage() {
           <div className="pt-6 border-t border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Eye size={16} className="text-white/20" />
-              <span className="text-xs font-bold text-white/40">{post.views} Views</span>
+              <span className="text-xs font-bold text-white/40">{getDisplayedViews(post)} Views</span>
             </div>
             <Button 
               onClick={() => router.push('/trading/social-splash')}
