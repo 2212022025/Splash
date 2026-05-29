@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, push, onValue, set, remove, query, limitToLast, runTransaction, update } from 'firebase/database';
 import { Button } from '@/components/ui/button';
@@ -87,7 +87,7 @@ interface WithdrawalRecord {
   status: string;
 }
 
-export default function SocialSplashPage() {
+function SocialSplashContent() {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [user, setUser] = useState<any>(null);
   const [newPostText, setNewPostText] = useState("");
@@ -740,5 +740,17 @@ export default function SocialSplashPage() {
         <p className={cn("text-[9px] uppercase tracking-[0.6em] font-headline italic opacity-20")}>Neural Social Link &bull; SV-12 Pro Node Active</p>
       </footer>
     </div>
+  );
+}
+
+export default function SocialSplashPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white/20 uppercase tracking-[0.4em] font-headline text-[10px]">
+        Syncing Neural Nodes...
+      </div>
+    }>
+      <SocialSplashContent />
+    </Suspense>
   );
 }
