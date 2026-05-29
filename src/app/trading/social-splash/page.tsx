@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
@@ -56,7 +55,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 
-const ABUSE_WORDS = ["fuck", "bitch", "chutiya", "mc", "bc", "gandu", "madarchod", "fake"];
+const ABUSE_WORDS = ["fuck", "fck", "fuk", "phuck", "f*ck", "shit", "sh1t", "sh*t", "bitch", "btch", "b!tch", "asshole", "arsehole", "bastard", "basterd", "dick", "d*ck", "d1ck", "pussy", "cock", "slut", "whore", "wh0re", "chutiya", "chootiya", "bc", "bhenchod", "behenchod", "bhadve", "bcn", "mc", "madarchod", "maderchod", "mdarchod", "gaand", "gand", "gnd", "gaandfat", "lauda", "luda", "l0da", "lora", "lavda", "kamina", "kameena", "kmeena", "sala", "saala", "bsdk", "bhosdike", "bhosad", "bhosadpappu"];
 const MONETIZATION_THRESHOLD = 1000;
 const TAX_RATE = 0.33;
 const MIN_WITHDRAWAL = 20;
@@ -365,6 +364,7 @@ function SocialSplashContent() {
       timestamp: Date.now()
     });
     setReportedPosts(prev => [...prev, post.id]);
+    
     const content = post.text.toLowerCase();
     if (ABUSE_WORDS.some(word => content.includes(word))) {
       const banUntil = Date.now() + (30 * 60 * 1000);

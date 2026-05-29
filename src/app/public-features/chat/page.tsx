@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -15,6 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+const ABUSE_WORDS = ["fuck", "fck", "fuk", "phuck", "f*ck", "shit", "sh1t", "sh*t", "bitch", "btch", "b!tch", "asshole", "arsehole", "bastard", "basterd", "dick", "d*ck", "d1ck", "pussy", "cock", "slut", "whore", "wh0re", "chutiya", "chootiya", "bc", "bhenchod", "behenchod", "bhadve", "bcn", "mc", "madarchod", "maderchod", "mdarchod", "gaand", "gand", "gnd", "gaandfat", "lauda", "luda", "l0da", "lora", "lavda", "kamina", "kameena", "kmeena", "sala", "saala", "bsdk", "bhosdike", "bhosad", "bhosadpappu"];
 
 interface ChatMessage {
   id: string;
@@ -137,15 +138,23 @@ export default function PublicChatPage() {
       timestamp: Date.now()
     });
     
-    // As per requirement: if anyone reports, the reported user gets banned
-    const banDuration = 30 * 60 * 1000; // 30 mins
-    const bannedUntil = Date.now() + banDuration;
-    set(ref(db, `users/${msg.chatName}/bannedUntil`), bannedUntil);
+    // Check if contains abuse words for ban
+    const content = msg.text.toLowerCase();
+    if (ABUSE_WORDS.some(word => content.includes(word))) {
+      const banDuration = 30 * 60 * 1000; // 30 mins
+      const bannedUntil = Date.now() + banDuration;
+      set(ref(db, `users/${msg.chatName}/bannedUntil`), bannedUntil);
 
-    toast({ 
-      title: "User Reported & Banned", 
-      description: `${msg.chatName} has been suspended for 30 minutes following your report.` 
-    });
+      toast({ 
+        title: "User Reported & Banned", 
+        description: `${msg.chatName} has been suspended for 30 minutes for policy violation.` 
+      });
+    } else {
+      toast({ 
+        title: "Report Successfully", 
+        description: "Message reported for review." 
+      });
+    }
   };
 
   const handleBlockUser = (chatName: string) => {
