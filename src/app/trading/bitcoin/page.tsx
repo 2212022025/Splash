@@ -228,7 +228,6 @@ export default function BitcoinTradingPage() {
     function formatUSD(n) { return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     function addHistory(side, bet, resultText) {
       const tr = document.createElement('tr');
-      // Using concatenation to avoid template literal nesting issues in the iframe source
       tr.innerHTML = '<td>' + new Date().toLocaleTimeString() + '</td><td>' + side + '</td><td>' + formatUSD(bet) + '</td><td>' + resultText + '</td>';
       historyTbody.prepend(tr);
       while (historyTbody.childNodes.length > 60) historyTbody.removeChild(historyTbody.lastChild);
@@ -369,7 +368,7 @@ export default function BitcoinTradingPage() {
         db = firebase.database();
         
         userTagEl.textContent = "User: @" + username;
-        userRef = db.ref("users/" + username);
+        userRef = db.ref("bitcoin_users/" + username);
 
         const snap = await userRef.once("value");
         const data = snap.val() || {};
