@@ -8,6 +8,8 @@ import { Dashboard } from '@/components/Dashboard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ShieldAlert, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -22,19 +24,16 @@ export default function Home() {
         const remainingMinutes = Math.ceil(remainingMs / 60000);
         
         setSuspensionInfo(prev => {
-          // Only force show if requested (like during login) or if it's the first detection
           const shouldShow = forceShow || prev.active;
           return { active: shouldShow, remaining: remainingMinutes };
         });
 
-        // Proactively clear session if user is banned
         if (sessionStorage.getItem('splash_session_user')) {
           sessionStorage.removeItem('splash_session_user');
           setUser(null);
         }
         return true;
       } else {
-        // Automatically unbanned if time exceeded
         localStorage.removeItem('splash_banned_until');
       }
     }
@@ -43,7 +42,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Check for active session
     const sessionUser = sessionStorage.getItem('splash_session_user');
     if (sessionUser) {
       try {
@@ -67,10 +65,26 @@ export default function Home() {
       return () => clearTimeout(timer);
     }
 
-    // Frequent check for auto-unban and remaining time update
     const interval = setInterval(() => checkSuspension(false), 5000);
     return () => clearInterval(interval);
   }, [checkSuspension]);
+
+  // Sync remote ban for active user
+  useEffect(() => {
+    if (user) {
+      const banRef = ref(db, `bans/${user.chatName}`);
+      const unsubscribe = onValue(banRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const bannedUntil = snapshot.val();
+          if (bannedUntil > Date.now()) {
+            localStorage.setItem('splash_banned_until', bannedUntil.toString());
+            checkSuspension(true);
+          }
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [user, checkSuspension]);
 
   const handleLoginSuccess = (userData: { username: string; email: string; chatName: string }) => {
     if (checkSuspension(true)) return;

@@ -34,18 +34,6 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check suspension
-    const bannedUntil = localStorage.getItem('splash_banned_until');
-    if (bannedUntil && parseInt(bannedUntil) > Date.now()) {
-      toast({ 
-        variant: "destructive", 
-        title: "Account Banned", 
-        description: "Your account is currently suspended from the network." 
-      });
-      onBannedAttempt();
-      return;
-    }
-
     if (!username || !email) {
       toast({ variant: "destructive", title: "Error", description: "All fields are required" });
       return;
@@ -63,6 +51,25 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
         ) as any;
 
         if (foundUser) {
+          // Check remote ban
+          const banRef = ref(db, `bans/${foundUser.chatName}`);
+          const banSnap = await get(banRef);
+          
+          if (banSnap.exists()) {
+            const bannedUntil = banSnap.val();
+            if (bannedUntil > Date.now()) {
+              localStorage.setItem('splash_banned_until', bannedUntil.toString());
+              toast({ 
+                variant: "destructive", 
+                title: "Account Banned", 
+                description: "Your account is currently suspended from the network." 
+              });
+              onBannedAttempt();
+              setIsLoading(false);
+              return;
+            }
+          }
+
           localStorage.setItem('splash_last_username', username);
           localStorage.setItem('splash_last_email', email);
           onLoginSuccess(foundUser);
@@ -133,7 +140,7 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
             {isLogin ? 'Login' : 'Create an Account'}
           </CardTitle>
           <CardDescription className="font-body text-white/40">
-            {isLogin ? 'Access your identity' : 'Initialize a new node'}
+            {isLogin ? 'Access your identity' : 'Request Access to Create an Account'}
           </CardDescription>
         </CardHeader>
         

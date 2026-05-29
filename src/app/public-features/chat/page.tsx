@@ -74,8 +74,13 @@ export default function PublicChatPage() {
   }, [router]);
 
   const handleSuspension = (isAbusive: boolean) => {
+    if (!user) return;
     const banDuration = 30 * 60 * 1000; // 30 mins
     const bannedUntil = Date.now() + banDuration;
+    
+    // Save ban to Firebase RTDB
+    set(ref(db, `bans/${user.chatName}`), bannedUntil);
+    
     localStorage.setItem('splash_banned_until', bannedUntil.toString());
 
     if (isAbusive) {
@@ -83,7 +88,7 @@ export default function PublicChatPage() {
       setTimeout(() => {
         sessionStorage.removeItem('splash_session_user');
         window.location.href = "/";
-      }, 3000); // 3 seconds as requested
+      }, 3000);
     } else {
       sessionStorage.removeItem('splash_session_user');
       window.location.href = "/";
