@@ -16,25 +16,18 @@ export default function Home() {
   const [user, setUser] = useState<{ username: string; email: string; chatName: string } | null>(null);
   const [suspensionInfo, setSuspensionInfo] = useState<{ active: boolean; remaining: number }>({ active: false, remaining: 0 });
 
-  const checkSuspension = useCallback((forceShow = false) => {
-    const bannedUntil = localStorage.getItem('splash_banned_until');
+  const checkSuspension = useCallback((bannedUntil: number | null = null) => {
     if (bannedUntil) {
-      const remainingMs = parseInt(bannedUntil) - Date.now();
+      const remainingMs = bannedUntil - Date.now();
       if (remainingMs > 0) {
         const remainingMinutes = Math.ceil(remainingMs / 60000);
+        setSuspensionInfo({ active: true, remaining: remainingMinutes });
         
-        setSuspensionInfo(prev => {
-          const shouldShow = forceShow || prev.active;
-          return { active: shouldShow, remaining: remainingMinutes };
-        });
-
         if (sessionStorage.getItem('splash_session_user')) {
           sessionStorage.removeItem('splash_session_user');
           setUser(null);
         }
         return true;
-      } else {
-        localStorage.removeItem('splash_banned_until');
       }
     }
     setSuspensionInfo({ active: false, remaining: 0 });
@@ -55,19 +48,14 @@ export default function Home() {
     
     if (splashShown) {
       setLoading(false);
-      checkSuspension();
     } else {
       const timer = setTimeout(() => {
         setLoading(false);
         sessionStorage.setItem('splash_shown', 'true');
-        checkSuspension();
       }, 2000);
       return () => clearTimeout(timer);
     }
-
-    const interval = setInterval(() => checkSuspension(false), 5000);
-    return () => clearInterval(interval);
-  }, [checkSuspension]);
+  }, []);
 
   // Sync remote ban for active user from their profile record
   useEffect(() => {
@@ -77,10 +65,8 @@ export default function Home() {
         if (snapshot.exists()) {
           const bannedUntil = snapshot.val();
           if (bannedUntil > Date.now()) {
-            localStorage.setItem('splash_banned_until', bannedUntil.toString());
-            checkSuspension(true);
+            checkSuspension(bannedUntil);
           } else {
-            localStorage.removeItem('splash_banned_until');
             setSuspensionInfo({ active: false, remaining: 0 });
           }
         }
@@ -90,14 +76,12 @@ export default function Home() {
   }, [user, checkSuspension]);
 
   const handleLoginSuccess = (userData: { username: string; email: string; chatName: string }) => {
-    if (checkSuspension(true)) return;
-    
     sessionStorage.setItem('splash_session_user', JSON.stringify(userData));
     setUser(userData);
   };
 
-  const handleLoginAttemptWhileBanned = () => {
-    checkSuspension(true);
+  const handleLoginAttemptWhileBanned = (bannedUntil: number) => {
+    checkSuspension(bannedUntil);
   };
 
   if (loading) {

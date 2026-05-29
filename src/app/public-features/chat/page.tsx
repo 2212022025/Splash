@@ -80,8 +80,6 @@ export default function PublicChatPage() {
     
     // Save ban directly to user record in Firebase RTDB
     set(ref(db, `users/${user.chatName}/bannedUntil`), bannedUntil);
-    
-    localStorage.setItem('splash_banned_until', bannedUntil.toString());
 
     if (isAbusive) {
       toast({ variant: "destructive", title: "Policy Violation", description: "Your Account is Banned" });

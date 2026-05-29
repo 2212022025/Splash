@@ -13,7 +13,7 @@ import { User, Mail, MessageSquare, PlusCircle, LogIn, Zap } from 'lucide-react'
 
 interface AuthScreenProps {
   onLoginSuccess: (user: { username: string; email: string; chatName: string }) => void;
-  onBannedAttempt: () => void;
+  onBannedAttempt: (bannedUntil: number) => void;
 }
 
 export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps) {
@@ -35,7 +35,7 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
     e.preventDefault();
     
     if (!username || !email) {
-      toast({ variant: "destructive", title: "Error", description: "All fields are required" });
+      toast({ variant: "destructive", title: "Invalid Credentials", description: "Username or Email is incorrect." });
       return;
     }
 
@@ -51,15 +51,14 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
         ) as any;
 
         if (foundUser) {
-          // Check ban status directly from user record
+          // Check ban status directly from database record
           if (foundUser.bannedUntil && foundUser.bannedUntil > Date.now()) {
-            localStorage.setItem('splash_banned_until', foundUser.bannedUntil.toString());
             toast({ 
               variant: "destructive", 
               title: "Account Banned", 
               description: "Your account is currently suspended from the network." 
             });
-            onBannedAttempt();
+            onBannedAttempt(foundUser.bannedUntil);
             setIsLoading(false);
             return;
           }
