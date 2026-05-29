@@ -36,7 +36,11 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
     // Check suspension
     const bannedUntil = localStorage.getItem('splash_banned_until');
     if (bannedUntil && parseInt(bannedUntil) > Date.now()) {
-      window.location.reload(); 
+      toast({ 
+        variant: "destructive", 
+        title: "Account Banned", 
+        description: "Your account is currently suspended from the network." 
+      });
       return;
     }
 

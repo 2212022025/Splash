@@ -56,7 +56,7 @@ export default function Home() {
         sessionStorage.setItem('splash_shown', 'true');
         checkSuspension();
       }, 2000);
-      return () => clearTimeout(timer);
+      return () => setTimeout(() => clearTimeout(timer));
     }
 
     // Frequent check for auto-unban and remaining time update
