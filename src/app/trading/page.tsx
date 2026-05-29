@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, Coins } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Coins, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -17,7 +17,7 @@ export default function TradingSubMenu() {
           variant="ghost" 
           size="icon" 
           className="text-white/60 hover:text-white"
-          onClick={() => router.back()}
+          onClick={() => router.push('/')}
         >
           <ArrowLeft size={20} />
         </Button>
@@ -36,6 +36,18 @@ export default function TradingSubMenu() {
             <div className="flex flex-col">
               <span className="text-2xl font-headline font-bold text-white uppercase tracking-tight">Bitcoin</span>
               <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Connect Pulse Trader</span>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/trading/social-splash" className="block animate-in slide-in-from-bottom-4 duration-400">
+          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all group active:scale-95 duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
+              <Share2 size={32} className="text-purple-400" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xl font-headline font-bold text-white uppercase tracking-tight">Social Splash</span>
+              <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Neural Threads Link</span>
             </div>
           </div>
         </Link>
