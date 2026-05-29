@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { SplashSequence } from '@/components/SplashSequence';
 import { AuthScreen } from '@/components/AuthScreen';
 import { Dashboard } from '@/components/Dashboard';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ShieldAlert } from 'lucide-react';
 
 export default function Home() {
@@ -13,8 +13,29 @@ export default function Home() {
   const [user, setUser] = useState<{ username: string; email: string; chatName: string } | null>(null);
   const [suspensionInfo, setSuspensionInfo] = useState<{ active: boolean; remaining: number }>({ active: false, remaining: 0 });
 
+  const checkSuspension = () => {
+    const bannedUntil = localStorage.getItem('splash_banned_until');
+    if (bannedUntil) {
+      const remainingMs = parseInt(bannedUntil) - Date.now();
+      if (remainingMs > 0) {
+        setSuspensionInfo({ active: true, remaining: Math.ceil(remainingMs / 60000) });
+        // Proactively clear session if user is banned
+        if (sessionStorage.getItem('splash_session_user')) {
+          sessionStorage.removeItem('splash_session_user');
+          setUser(null);
+        }
+        return true;
+      } else {
+        // Automatically unbanned if time exceeded
+        localStorage.removeItem('splash_banned_until');
+      }
+    }
+    setSuspensionInfo({ active: false, remaining: 0 });
+    return false;
+  };
+
   useEffect(() => {
-    // Check for active session in current tab
+    // Check for active session
     const sessionUser = sessionStorage.getItem('splash_session_user');
     if (sessionUser) {
       try {
@@ -23,21 +44,6 @@ export default function Home() {
         console.error("Session parse failed");
       }
     }
-
-    const checkSuspension = () => {
-      const bannedUntil = localStorage.getItem('splash_banned_until');
-      if (bannedUntil) {
-        const remaining = parseInt(bannedUntil) - Date.now();
-        if (remaining > 0) {
-          setSuspensionInfo({ active: true, remaining: Math.ceil(remaining / 60000) });
-          return true;
-        } else {
-          localStorage.removeItem('splash_banned_until');
-        }
-      }
-      setSuspensionInfo({ active: false, remaining: 0 });
-      return false;
-    };
 
     const splashShown = sessionStorage.getItem('splash_shown');
     
@@ -53,18 +59,14 @@ export default function Home() {
       return () => clearTimeout(timer);
     }
 
-    const interval = setInterval(checkSuspension, 30000);
+    // Frequent check for auto-unban and remaining time update
+    const interval = setInterval(checkSuspension, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const handleLoginSuccess = (userData: { username: string; email: string; chatName: string }) => {
-    const bannedUntil = localStorage.getItem('splash_banned_until');
-    if (bannedUntil && parseInt(bannedUntil) > Date.now()) {
-      const remaining = Math.ceil((parseInt(bannedUntil) - Date.now()) / 60000);
-      setSuspensionInfo({ active: true, remaining });
-      return;
-    }
-    // Save to session storage for navigation persistence
+    if (checkSuspension()) return;
+    
     sessionStorage.setItem('splash_session_user', JSON.stringify(userData));
     setUser(userData);
   };

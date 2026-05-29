@@ -81,9 +81,11 @@ export default function PublicChatPage() {
     if (isAbusive) {
       toast({ variant: "destructive", title: "Policy Violation", description: "Your Account is Banned" });
       setTimeout(() => {
+        sessionStorage.removeItem('splash_session_user');
         window.location.href = "/";
-      }, 4000);
+      }, 3000); // 3 seconds as requested
     } else {
+      sessionStorage.removeItem('splash_session_user');
       window.location.href = "/";
     }
   };
@@ -189,7 +191,7 @@ export default function PublicChatPage() {
               >
                 <div className="flex items-center gap-2 mb-1">
                   {!isOwn && (
-                    <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center border border-white/5">
+                    <div className="w-5 h-5 rounded-lg bg-white/10 flex items-center justify-center border border-white/5">
                       <User size={10} className="text-white/40" />
                     </div>
                   )}
@@ -198,7 +200,7 @@ export default function PublicChatPage() {
                   </span>
                   {msg.isModerator && <ShieldCheck size={12} className="text-blue-400 fill-blue-400/20" />}
                   {isOwn && (
-                    <div className="w-5 h-5 rounded-full bg-primary/30 flex items-center justify-center border border-white/5">
+                    <div className="w-5 h-5 rounded-lg bg-primary/30 flex items-center justify-center border border-white/5">
                       <User size={10} className="text-white/60" />
                     </div>
                   )}

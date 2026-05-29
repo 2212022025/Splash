@@ -36,7 +36,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
     // Check suspension
     const bannedUntil = localStorage.getItem('splash_banned_until');
     if (bannedUntil && parseInt(bannedUntil) > Date.now()) {
-      window.location.reload(); // Trigger the suspension modal in the root
+      window.location.reload(); 
       return;
     }
 
@@ -125,7 +125,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent"></div>
         <CardHeader className="text-center pt-8 pb-4">
           <CardTitle className="font-headline text-2xl text-white uppercase tracking-tight">
-            {isLogin ? 'Login' : 'Request Access'}
+            {isLogin ? 'Login' : 'Create an Account'}
           </CardTitle>
           <CardDescription className="font-body text-white/40">
             {isLogin ? 'Access your identity' : 'Initialize a new node'}
