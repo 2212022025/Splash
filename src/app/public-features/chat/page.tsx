@@ -49,9 +49,16 @@ export default function PublicChatPage() {
         const found = JSON.parse(sessionUser);
         setUser(found);
         
-        // Block check from separate blocked node (for chat only)
-        const blockRef = ref(db, `blocked/${found.chatName}`);
-        onValue(blockRef, (s) => setIsBlocked(s.exists()));
+        // Listen to the user's specific ban record in /users/
+        const userBanRef = ref(db, `users/${found.chatName}/bannedUntil`);
+        onValue(userBanRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const bannedUntil = snapshot.val();
+            setIsBlocked(bannedUntil > Date.now());
+          } else {
+            setIsBlocked(false);
+          }
+        });
       } catch (e) {
         router.push('/');
       }
@@ -80,7 +87,6 @@ export default function PublicChatPage() {
     const banDuration = 30 * 60 * 1000; // 30 mins
     const bannedUntil = Date.now() + banDuration;
     
-    // Save ban directly to user record in Firebase RTDB
     set(ref(db, `users/${user.chatName}/bannedUntil`), bannedUntil);
 
     toast({ 
@@ -151,13 +157,15 @@ export default function PublicChatPage() {
   };
 
   const handleBlockUser = (chatName: string) => {
-    set(ref(db, `blocked/${chatName}`), true);
-    toast({ title: "User Blocked", description: `${chatName} can no longer chat.` });
+    // Permanent/Very long ban (100 years)
+    const farFuture = Date.now() + (100 * 365 * 24 * 60 * 60 * 1000);
+    set(ref(db, `users/${chatName}/bannedUntil`), farFuture);
+    toast({ title: "User Blocked", description: `${chatName} has been restricted.` });
   };
 
   const handleUnbanUser = (chatName: string) => {
     set(ref(db, `users/${chatName}/bannedUntil`), null);
-    toast({ title: "User Restored", description: `${chatName} has been unbanned.` });
+    toast({ title: "User Restored", description: `${chatName} access restored.` });
   };
 
   if (!user) return null;

@@ -35,15 +35,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const sessionUser = sessionStorage.getItem('splash_session_user');
-    if (sessionUser) {
-      try {
-        setUser(JSON.parse(sessionUser));
-      } catch (e) {
-        console.error("Session parse failed");
-      }
-    }
-
+    // Session is NOT restored on refresh/open as requested.
+    // User must log in every time the app is opened or refreshed.
     const splashShown = sessionStorage.getItem('splash_shown');
     
     if (splashShown) {
@@ -69,6 +62,8 @@ export default function Home() {
           } else {
             setSuspensionInfo({ active: false, remaining: 0 });
           }
+        } else {
+          setSuspensionInfo({ active: false, remaining: 0 });
         }
       });
       return () => unsubscribe();
