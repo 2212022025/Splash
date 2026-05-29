@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -24,9 +23,6 @@ interface ChatMessage {
   timestamp: number;
   isModerator: boolean;
 }
-
-const BAN_WORDS = ["hacking", "cheating", "cracking"];
-const ABUSE_WORDS = ["fuck", "bitch", "chutiya", "mc", "bc", "gandu", "madarchod", "fake"];
 
 export default function PublicChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -82,41 +78,10 @@ export default function PublicChatPage() {
     return () => unsubscribe();
   }, [router]);
 
-  const handleSuspension = (isAbusive: boolean) => {
-    if (!user) return;
-    const banDuration = 30 * 60 * 1000; // 30 mins
-    const bannedUntil = Date.now() + banDuration;
-    
-    set(ref(db, `users/${user.chatName}/bannedUntil`), bannedUntil);
-
-    toast({ 
-      variant: "destructive", 
-      title: "Policy Violation", 
-      description: "Your Account is Banned" 
-    });
-
-    setTimeout(() => {
-      sessionStorage.removeItem('splash_session_user');
-      window.location.href = "/";
-    }, 3000);
-  };
-
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
     if (!text || !user || isBlocked) return;
-
-    const lowerText = text.toLowerCase();
-    
-    if (BAN_WORDS.some(word => lowerText.includes(word))) {
-      handleSuspension(false);
-      return;
-    }
-
-    if (ABUSE_WORDS.some(word => lowerText.includes(word))) {
-      handleSuspension(true);
-      return;
-    }
 
     const isModerator = user.username.includes('#225');
     const messagesRef = ref(db, 'public_chat');
@@ -145,6 +110,7 @@ export default function PublicChatPage() {
   };
 
   const handleReportMessage = (msg: ChatMessage) => {
+    // Log report to database
     push(ref(db, 'reports'), {
       messageId: msg.id,
       reportedBy: user.chatName,
@@ -153,7 +119,15 @@ export default function PublicChatPage() {
       timestamp: Date.now()
     });
     
-    toast({ title: "Reported", description: "Message sent for review." });
+    // As per requirement: if anyone reports, the reported user gets banned
+    const banDuration = 30 * 60 * 1000; // 30 mins
+    const bannedUntil = Date.now() + banDuration;
+    set(ref(db, `users/${msg.chatName}/bannedUntil`), bannedUntil);
+
+    toast({ 
+      title: "User Reported & Banned", 
+      description: `${msg.chatName} has been suspended for 30 minutes following your report.` 
+    });
   };
 
   const handleBlockUser = (chatName: string) => {
@@ -165,7 +139,7 @@ export default function PublicChatPage() {
 
   const handleUnbanUser = (chatName: string) => {
     set(ref(db, `users/${chatName}/bannedUntil`), null);
-    toast({ title: "User Restored", description: `${chatName} access restored.` });
+    toast({ title: "User Unblocked", description: `${chatName} access restored.` });
   };
 
   if (!user) return null;
@@ -262,7 +236,7 @@ export default function PublicChatPage() {
                             <UserX className="mr-2 h-4 w-4" /> Block User
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleUnbanUser(msg.chatName)} className="text-emerald-400 focus:text-emerald-400">
-                            <ShieldAlert className="mr-2 h-4 w-4" /> Unban Account
+                            <ShieldAlert className="mr-2 h-4 w-4" /> Unblock User
                           </DropdownMenuItem>
                         </>
                       )}

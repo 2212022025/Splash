@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -10,11 +9,13 @@ import { ShieldAlert, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ username: string; email: string; chatName: string } | null>(null);
   const [suspensionInfo, setSuspensionInfo] = useState<{ active: boolean; remaining: number }>({ active: false, remaining: 0 });
+  const { toast } = useToast();
 
   const checkSuspension = useCallback((bannedUntil: number | null = null) => {
     if (bannedUntil) {
@@ -22,11 +23,6 @@ export default function Home() {
       if (remainingMs > 0) {
         const remainingMinutes = Math.ceil(remainingMs / 60000);
         setSuspensionInfo({ active: true, remaining: remainingMinutes });
-        
-        if (sessionStorage.getItem('splash_session_user')) {
-          sessionStorage.removeItem('splash_session_user');
-          setUser(null);
-        }
         return true;
       }
     }
@@ -58,7 +54,20 @@ export default function Home() {
         if (snapshot.exists()) {
           const bannedUntil = snapshot.val();
           if (bannedUntil > Date.now()) {
-            checkSuspension(bannedUntil);
+            // Show toast sequence for 3 seconds then logout
+            toast({
+              variant: "destructive",
+              title: "Policy Violation",
+              description: "Your Account is Banned"
+            });
+            
+            setTimeout(() => {
+              if (sessionStorage.getItem('splash_session_user')) {
+                sessionStorage.removeItem('splash_session_user');
+                setUser(null);
+              }
+              checkSuspension(bannedUntil);
+            }, 3000);
           } else {
             setSuspensionInfo({ active: false, remaining: 0 });
           }
@@ -68,7 +77,7 @@ export default function Home() {
       });
       return () => unsubscribe();
     }
-  }, [user, checkSuspension]);
+  }, [user, checkSuspension, toast]);
 
   const handleLoginSuccess = (userData: { username: string; email: string; chatName: string }) => {
     sessionStorage.setItem('splash_session_user', JSON.stringify(userData));
