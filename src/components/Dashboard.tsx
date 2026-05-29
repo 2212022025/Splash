@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut, Zap, Gamepad2, BrainCircuit, UserCircle, Globe, LayoutGrid } from 'lucide-react';
+import { LogOut, Zap, Gamepad2, BrainCircuit, UserCircle, Globe } from 'lucide-react';
 import Link from 'next/link';
 import {
   Dialog,
@@ -133,7 +133,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
       </main>
 
       <footer className="p-8 text-center mt-auto">
-        <p className="text-[10px] text-white/10 uppercase tracking-[0.6em] font-headline">Splash &bull; VLF-Tec System</p>
+        <p className="text-[10px] text-white/10 uppercase tracking-[0.6em] font-headline">SV-12 Pro Active &bull; VLF-Tec System</p>
       </footer>
     </div>
   );

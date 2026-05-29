@@ -32,6 +32,14 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check suspension
+    const bannedUntil = localStorage.getItem('splash_banned_until');
+    if (bannedUntil && parseInt(bannedUntil) > Date.now()) {
+      window.location.reload(); // Trigger the suspension modal in the root
+      return;
+    }
+
     if (!username || !email) {
       toast({ variant: "destructive", title: "Error", description: "All fields are required" });
       return;
@@ -117,10 +125,10 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent"></div>
         <CardHeader className="text-center pt-8 pb-4">
           <CardTitle className="font-headline text-2xl text-white uppercase tracking-tight">
-            {isLogin ? 'Welcome Back' : 'Create Identity'}
+            {isLogin ? 'Login' : 'Request Access'}
           </CardTitle>
           <CardDescription className="font-body text-white/40">
-            {isLogin ? 'Enter your credentials' : 'Join the Splash network'}
+            {isLogin ? 'Access your identity' : 'Initialize a new node'}
           </CardDescription>
         </CardHeader>
         
@@ -173,7 +181,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
               className="w-full bg-primary hover:bg-primary/90 text-white h-12 rounded-xl font-headline tracking-widest uppercase text-xs mt-4 transition-all duration-300"
               disabled={isLoading}
             >
-              {isLoading ? 'Processing...' : (isLogin ? 'Login' : 'Initialize Account')}
+              {isLoading ? 'Processing...' : (isLogin ? 'Login' : 'Create an Account')}
             </Button>
           </form>
         </CardContent>
@@ -192,7 +200,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         </CardFooter>
       </Card>
       
-      <p className="mt-8 text-[9px] text-white/20 uppercase tracking-[0.4em]">Secure Transmission Active &bull; VLF-TEC</p>
+      <p className="mt-8 text-[9px] text-white/20 uppercase tracking-[0.4em]">SV-12 Pro Active &bull; VLF-TEC</p>
     </div>
   );
 }
