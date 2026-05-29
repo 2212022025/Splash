@@ -26,7 +26,16 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
-      <header className="h-20 border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-40 px-6 flex items-center justify-between">
+      <header className="h-20 border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-40 px-6 flex items-center justify-between overflow-hidden">
+        {/* New Brand Background Image */}
+        <div className="absolute inset-0 z-[-1] opacity-20">
+           <img 
+            src="https://files.catbox.moe/d9bnza.jpg" 
+            alt="VLF-Tec Brand" 
+            className="w-full h-full object-cover grayscale"
+          />
+        </div>
+
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center border border-white/10 neon-glow">
             <Zap size={22} className="text-accent" />

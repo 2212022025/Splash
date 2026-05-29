@@ -51,7 +51,6 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
         ) as any;
 
         if (foundUser) {
-          // Check ban status directly from database record
           if (foundUser.bannedUntil && foundUser.bannedUntil > Date.now()) {
             toast({ 
               variant: "destructive", 
@@ -97,7 +96,7 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
       const checkSnapshot = await get(userRef);
       
       if (checkSnapshot.exists()) {
-        toast({ variant: "destructive", title: "Error", description: "Chat Name already taken." });
+        toast({ variant: "destructive", title: "Error", description: "Chat Name already taken. Node identity collision detected." });
       } else {
         const newUser = { username, email, chatName, createdAt: Date.now() };
         await set(userRef, newUser);
@@ -106,6 +105,7 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
         localStorage.setItem('splash_last_email', email);
         
         onLoginSuccess(newUser);
+        toast({ title: "Node Created", description: "Your identity has been indexed on the network." });
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Could not create account." });

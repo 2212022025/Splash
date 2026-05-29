@@ -50,6 +50,7 @@ const ABUSE_WORDS = ["fuck", "bitch", "chutiya", "mc", "bc", "gandu", "madarchod
 const MONETIZATION_THRESHOLD = 1000;
 const TAX_RATE = 0.33;
 const MIN_WITHDRAWAL = 20;
+const MAX_CHARS = 250;
 
 interface SocialPost {
   id: string;
@@ -205,6 +206,10 @@ export default function SocialSplashPage() {
 
   const handleCreatePost = () => {
     if (!newPostText.trim() || !user) return;
+    if (newPostText.length > MAX_CHARS) {
+      toast({ variant: "destructive", title: "Limit Reached", description: `Thread must be under ${MAX_CHARS} characters.` });
+      return;
+    }
 
     const today = new Date().setHours(0,0,0,0);
     const todayCount = posts.filter(p => p.chatName === user.chatName && p.timestamp >= today).length;
@@ -294,16 +299,23 @@ export default function SocialSplashPage() {
 
   const handleEditPost = () => {
     if (!editingPost || !editingPost.text.trim()) return;
+    if (editingPost.text.length > MAX_CHARS) {
+      toast({ variant: "destructive", title: "Limit Reached", description: `Thread must be under ${MAX_CHARS} characters.` });
+      return;
+    }
     update(ref(db, `social_posts/${editingPost.id}`), { text: editingPost.text });
     setEditingPost(null);
+    toast({ title: "Thread Updated" });
   };
 
   const handleDeletePost = (postId: string) => {
     remove(ref(db, `social_posts/${postId}`));
+    toast({ title: "Thread Purged" });
   };
 
   const togglePrivate = (postId: string, current: boolean) => {
     update(ref(db, `social_posts/${postId}`), { isPrivate: !current });
+    toast({ title: current ? "Thread Public" : "Thread Private" });
   };
 
   const handleLike = (postId: string, currentLikes?: Record<string, boolean>) => {
@@ -416,12 +428,18 @@ export default function SocialSplashPage() {
                 <User size={20} className={ghostText} />
               </div>
               <div className="flex-1 space-y-3">
-                <Textarea 
-                  placeholder="Add Your Threads"
-                  value={newPostText}
-                  onChange={(e) => setNewPostText(e.target.value)}
-                  className={cn("bg-transparent border-none text-[15px] p-0 focus-visible:ring-0 resize-none min-h-[80px] placeholder:text-gray-400", textColor)}
-                />
+                <div className="relative">
+                  <Textarea 
+                    placeholder="Add Your Threads"
+                    value={newPostText}
+                    onChange={(e) => setNewPostText(e.target.value)}
+                    maxLength={MAX_CHARS}
+                    className={cn("bg-transparent border-none text-[15px] p-0 focus-visible:ring-0 resize-none min-h-[80px] placeholder:text-gray-400", textColor)}
+                  />
+                  <div className={cn("absolute bottom-0 right-0 text-[9px] font-bold opacity-30", newPostText.length >= MAX_CHARS ? "text-destructive opacity-100" : "")}>
+                    {newPostText.length}/{MAX_CHARS}
+                  </div>
+                </div>
                 <div className={cn("flex items-center gap-2 p-2 rounded-xl border", isWhiteTheme ? "bg-white border-gray-200" : "bg-white/5 border-white/5")}>
                   <ImageIcon size={14} className={ghostText} />
                   <Input placeholder="Catbox Image URL" value={newPostImageUrl} onChange={(e) => setNewPostImageUrl(e.target.value)} className="bg-transparent border-none h-6 py-0 focus-visible:ring-0 text-[11px] placeholder:text-gray-400" />
@@ -467,11 +485,14 @@ export default function SocialSplashPage() {
                     <Button variant="ghost" size="icon" className={mutedText}><MoreHorizontal size={18} /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className={cn(isWhiteTheme ? "bg-white border-gray-200" : "bg-[#161616] border-white/10 text-white")}>
-                    <DropdownMenuItem disabled className="text-[10px] opacity-50">ID: {post.id}</DropdownMenuItem>
+                    <DropdownMenuItem disabled className="text-[10px] opacity-50 font-mono">ID: {post.id}</DropdownMenuItem>
                     {post.chatName === user?.chatName ? (
                       <>
                         <DropdownMenuItem onClick={() => setEditingPost({id: post.id, text: post.text})}><Edit3 className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => togglePrivate(post.id, post.isPrivate || false)}>{post.isPrivate ? 'Public' : 'Private'}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => togglePrivate(post.id, post.isPrivate || false)}>
+                          {post.isPrivate ? <Globe className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
+                          {post.isPrivate ? 'Make Public' : 'Make Private'}
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                       </>
                     ) : (
@@ -649,6 +670,29 @@ export default function SocialSplashPage() {
               onKeyDown={(e) => e.key === 'Enter' && viewingCommentsFor && handleAddComment(viewingCommentsFor.id)}
             />
             <Button onClick={() => viewingCommentsFor && handleAddComment(viewingCommentsFor.id)} className="h-12 w-12 rounded-2xl bg-primary hover:scale-105 transition-transform"><Send size={18} /></Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingPost} onOpenChange={() => setEditingPost(null)}>
+        <DialogContent className={cn("max-w-lg rounded-3xl flex flex-col p-6", isWhiteTheme ? "bg-white text-black" : "bg-[#111111] border-white/10 text-white")}>
+          <DialogHeader>
+            <DialogTitle className="font-headline italic">Edit Thread</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea 
+              value={editingPost?.text || ""}
+              onChange={(e) => setEditingPost(prev => prev ? {...prev, text: e.target.value} : null)}
+              maxLength={MAX_CHARS}
+              className={cn("min-h-[120px] rounded-2xl border-none p-4", isWhiteTheme ? "bg-gray-100" : "bg-white/5")}
+            />
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] opacity-40 font-bold uppercase">{editingPost?.text.length}/{MAX_CHARS} Characters</span>
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => setEditingPost(null)}>Cancel</Button>
+                <Button onClick={handleEditPost} className="bg-primary px-8 rounded-xl">Save</Button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
