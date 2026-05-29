@@ -24,7 +24,9 @@ import {
   Lock,
   Globe,
   BarChart3,
-  X
+  X,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -35,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from '@/lib/utils';
 
 const ABUSE_WORDS = ["fuck", "bitch", "chutiya", "mc", "bc", "gandu", "madarchod", "fake"];
 
@@ -60,6 +63,7 @@ export default function SocialSplashPage() {
   const [viewingCommentsFor, setViewingCommentsFor] = useState<SocialPost | null>(null);
   const [view, setView] = useState<'feed' | 'analytics'>('feed');
   const [editingPost, setEditingPost] = useState<{id: string, text: string} | null>(null);
+  const [isWhiteTheme, setIsWhiteTheme] = useState(false);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -199,9 +203,16 @@ export default function SocialSplashPage() {
         ? posts.filter(p => p.chatName === filterUser && (!p.isPrivate || p.chatName === user?.chatName))
         : posts.filter(p => !p.isPrivate || p.chatName === user?.chatName));
 
+  const pageBg = isWhiteTheme ? 'bg-white' : 'bg-[#0a0a0a]';
+  const textColor = isWhiteTheme ? 'text-black' : 'text-white';
+  const cardBg = isWhiteTheme ? 'bg-gray-50 border-gray-200' : 'bg-[#111111] border-white/5';
+  const headerBg = isWhiteTheme ? 'bg-white/80 border-gray-200' : 'bg-black/40 border-white/5';
+  const mutedText = isWhiteTheme ? 'text-gray-500' : 'text-white/40';
+  const ghostText = isWhiteTheme ? 'text-gray-400' : 'text-white/20';
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col pb-20">
-      <header className="h-16 border-b border-white/5 bg-black/40 backdrop-blur-xl sticky top-0 z-50 px-4 flex items-center justify-between">
+    <div className={cn("min-h-screen flex flex-col pb-20 transition-colors duration-300", pageBg, textColor)}>
+      <header className={cn("h-16 border-b backdrop-blur-xl sticky top-0 z-50 px-4 flex items-center justify-between", headerBg)}>
         <div className="flex items-center gap-3">
           <Button 
             variant="ghost" 
@@ -211,7 +222,7 @@ export default function SocialSplashPage() {
               else if (filterUser) router.push('/trading/social-splash');
               else router.push('/trading');
             }}
-            className="text-white/60"
+            className={mutedText}
           >
             <ArrowLeft size={20} />
           </Button>
@@ -223,50 +234,70 @@ export default function SocialSplashPage() {
           </div>
         </div>
 
-        <Button 
-          variant="ghost" 
-          onClick={() => setView(view === 'feed' ? 'analytics' : 'feed')}
-          className={`flex items-center gap-2 rounded-full border border-white/5 px-4 ${view === 'analytics' ? 'bg-purple-500/20 text-purple-400' : 'text-white/40'}`}
-        >
-          <BarChart3 size={18} />
-          <span className="text-[10px] uppercase font-bold tracking-widest hidden sm:inline">Analytics</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsWhiteTheme(!isWhiteTheme)}
+            className={cn("rounded-full", mutedText)}
+          >
+            {isWhiteTheme ? <Moon size={18} /> : <Sun size={18} />}
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            onClick={() => setView(view === 'feed' ? 'analytics' : 'feed')}
+            className={cn("flex items-center gap-2 rounded-full border px-4", 
+              isWhiteTheme ? "border-gray-200" : "border-white/5",
+              view === 'analytics' ? 'bg-purple-500/20 text-purple-400' : mutedText
+            )}
+          >
+            <BarChart3 size={18} />
+            <span className="text-[10px] uppercase font-bold tracking-widest hidden sm:inline">Analytics</span>
+          </Button>
+        </div>
       </header>
 
       <main className="flex-1 max-w-xl mx-auto w-full p-4 space-y-6">
         {/* Top Compose Box */}
         {view === 'feed' && !filterUser && (
-          <div className="bg-[#111111] border border-white/5 rounded-3xl p-5 space-y-4 shadow-xl">
+          <div className={cn("border rounded-3xl p-5 space-y-4 shadow-sm", cardBg)}>
             <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5 shrink-0">
-                <User size={20} className="text-white/20" />
+              <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border shrink-0", 
+                isWhiteTheme ? "bg-gray-100 border-gray-200" : "bg-white/5 border-white/5"
+              )}>
+                <User size={20} className={ghostText} />
               </div>
               <div className="flex-1 space-y-3">
                 <Textarea 
-                  placeholder="Broadcast to the network..."
+                  placeholder="Add Your Threads"
                   value={newPostText}
                   onChange={(e) => setNewPostText(e.target.value)}
-                  className="bg-transparent border-none text-[15px] p-0 focus-visible:ring-0 resize-none min-h-[60px] placeholder:text-white/10"
+                  className="bg-transparent border-none text-[15px] p-0 focus-visible:ring-0 resize-none min-h-[60px] placeholder:text-gray-400"
                 />
-                <div className="flex items-center gap-2 bg-white/5 p-2 rounded-xl border border-white/5">
-                  <ImageIcon size={14} className="text-white/20" />
+                <div className={cn("flex items-center gap-2 p-2 rounded-xl border", 
+                  isWhiteTheme ? "bg-white border-gray-200" : "bg-white/5 border-white/5"
+                )}>
+                  <ImageIcon size={14} className={ghostText} />
                   <Input 
                     placeholder="Image URL (Optional)"
                     value={newPostImageUrl}
                     onChange={(e) => setNewPostImageUrl(e.target.value)}
-                    className="bg-transparent border-none h-6 py-0 focus-visible:ring-0 text-[11px] placeholder:text-white/10"
+                    className="bg-transparent border-none h-6 py-0 focus-visible:ring-0 text-[11px] placeholder:text-gray-400"
                   />
                 </div>
                 <div className="flex items-center justify-between pt-2">
-                  <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest">
+                  <span className={cn("text-[10px] font-bold uppercase tracking-widest", ghostText)}>
                     {posts.filter(p => p.chatName === user?.chatName && p.timestamp >= new Date().setHours(0,0,0,0)).length}/5 Daily Limit
                   </span>
                   <Button 
                     onClick={handleCreatePost}
                     disabled={!newPostText.trim() || isPosting}
-                    className="bg-white text-black hover:bg-white/90 rounded-full px-6 font-bold text-xs uppercase"
+                    className={cn("rounded-full px-6 font-bold text-xs uppercase", 
+                      isWhiteTheme ? "bg-black text-white hover:bg-black/90" : "bg-white text-black hover:bg-white/90"
+                    )}
                   >
-                    Broadcast
+                    Post
                   </Button>
                 </div>
               </div>
@@ -276,13 +307,16 @@ export default function SocialSplashPage() {
 
         {displayedPosts.length === 0 && (
           <div className="text-center py-20">
-            <Share2 size={48} className="mx-auto text-white/5 mb-4" />
-            <p className="text-white/20 font-bold uppercase tracking-widest text-xs">No activity detected.</p>
+            <Share2 size={48} className={cn("mx-auto mb-4", ghostText)} />
+            <p className={cn("font-bold uppercase tracking-widest text-xs", ghostText)}>No activity detected.</p>
           </div>
         )}
 
         {displayedPosts.map((post) => (
-          <div key={post.id} className={`bg-[#111111] border rounded-3xl p-5 space-y-4 transition-all ${post.isPrivate ? 'border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.05)]' : 'border-white/5'}`}>
+          <div key={post.id} className={cn("border rounded-3xl p-5 space-y-4 transition-all shadow-sm", 
+            cardBg,
+            post.isPrivate && 'border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.05)]'
+          )}>
             <div className="flex items-center justify-between">
               <button 
                 onClick={() => {
@@ -291,25 +325,29 @@ export default function SocialSplashPage() {
                 }}
                 className="flex items-center gap-2 group"
               >
-                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5 group-hover:border-purple-500/50 transition-colors">
-                  <User size={20} className="text-white/40 group-hover:text-purple-400" />
+                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border transition-colors", 
+                  isWhiteTheme ? "bg-gray-100 border-gray-200 group-hover:border-purple-500/50" : "bg-white/5 border-white/5 group-hover:border-purple-500/50"
+                )}>
+                  <User size={20} className={cn("transition-colors", 
+                    isWhiteTheme ? "text-gray-400 group-hover:text-purple-600" : "text-white/40 group-hover:text-purple-400"
+                  )} />
                 </div>
                 <div className="flex flex-col items-start">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold hover:underline">@{post.chatName}</span>
+                    <span className={cn("text-sm font-bold hover:underline", textColor)}>@{post.chatName}</span>
                     {post.isPrivate && <Lock size={10} className="text-amber-500" />}
                   </div>
-                  <span className="text-[10px] text-white/20">{new Date(post.timestamp).toLocaleDateString()}</span>
+                  <span className={cn("text-[10px]", mutedText)}>{new Date(post.timestamp).toLocaleDateString()}</span>
                 </div>
               </button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-white/20 hover:text-white">
+                  <Button variant="ghost" size="icon" className={mutedText}>
                     <MoreHorizontal size={18} />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-[#161616] border-white/10 text-white">
+                <DropdownMenuContent align="end" className={cn("border", isWhiteTheme ? "bg-white border-gray-200" : "bg-[#161616] border-white/10 text-white")}>
                   {post.chatName === user?.chatName ? (
                     <>
                       <DropdownMenuItem onClick={() => setEditingPost({id: post.id, text: post.text})}>
@@ -333,9 +371,9 @@ export default function SocialSplashPage() {
             </div>
 
             <div className="space-y-3">
-              <p className="text-white/90 text-[15px] leading-relaxed whitespace-pre-wrap">{post.text}</p>
+              <p className={cn("text-[15px] leading-relaxed whitespace-pre-wrap", isWhiteTheme ? "text-gray-800" : "text-white/90")}>{post.text}</p>
               {post.imageUrl && (
-                <div className="rounded-2xl overflow-hidden border border-white/5 bg-black/40">
+                <div className={cn("rounded-2xl overflow-hidden border", isWhiteTheme ? "border-gray-200 bg-gray-100" : "border-white/5 bg-black/40")}>
                   <img src={post.imageUrl} alt="Attached" className="w-full h-auto object-cover max-h-[400px]" />
                 </div>
               )}
@@ -344,7 +382,9 @@ export default function SocialSplashPage() {
             <div className="flex items-center gap-6 pt-2">
               <button 
                 onClick={() => handleLike(post.id, post.likes)}
-                className={`flex items-center gap-1.5 transition-colors ${post.likes?.[user?.chatName] ? 'text-red-500' : 'text-white/40 hover:text-red-400'}`}
+                className={cn("flex items-center gap-1.5 transition-colors", 
+                  post.likes?.[user?.chatName] ? 'text-red-500' : cn(mutedText, "hover:text-red-400")
+                )}
               >
                 <Heart size={18} fill={post.likes?.[user?.chatName] ? 'currentColor' : 'none'} />
                 <span className="text-xs font-bold">{Object.keys(post.likes || {}).length}</span>
@@ -352,36 +392,38 @@ export default function SocialSplashPage() {
               
               <button 
                 onClick={() => setViewingCommentsFor(post)}
-                className="flex items-center gap-1.5 text-white/40 hover:text-purple-400"
+                className={cn("flex items-center gap-1.5 hover:text-purple-500 transition-colors", mutedText)}
               >
                 <MessageCircle size={18} />
                 <span className="text-xs font-bold">{Object.keys(post.comments || {}).length}</span>
               </button>
 
-              <div className="flex items-center gap-1.5 text-white/40 ml-auto">
+              <div className={cn("flex items-center gap-1.5 ml-auto", mutedText)}>
                 <Eye size={18} />
                 <span className="text-xs font-bold">{post.views || 0}</span>
               </div>
             </div>
 
             {/* Smart Comments - Only show one */}
-            <div className="space-y-3 pt-2 border-t border-white/5">
+            <div className={cn("space-y-3 pt-2 border-t", isWhiteTheme ? "border-gray-200" : "border-white/5")}>
               {post.comments && Object.entries(post.comments).length > 0 && (
                 <div 
-                  className="bg-white/5 p-3 rounded-2xl cursor-pointer hover:bg-white/10 transition-colors"
+                  className={cn("p-3 rounded-2xl cursor-pointer transition-colors", 
+                    isWhiteTheme ? "bg-white border border-gray-100 hover:bg-gray-100" : "bg-white/5 hover:bg-white/10"
+                  )}
                   onClick={() => setViewingCommentsFor(post)}
                 >
                   {(() => {
                     const lastComment = Object.entries(post.comments).pop()![1];
                     return (
                       <div className="flex gap-2 items-start">
-                        <span className="text-[11px] font-bold text-purple-400 shrink-0">@{lastComment.chatName}</span>
-                        <p className="text-[11px] text-white/60 line-clamp-1">{lastComment.text}</p>
+                        <span className="text-[11px] font-bold text-purple-600 shrink-0">@{lastComment.chatName}</span>
+                        <p className={cn("text-[11px] line-clamp-1", isWhiteTheme ? "text-gray-600" : "text-white/60")}>{lastComment.text}</p>
                       </div>
                     );
                   })()}
                   {Object.keys(post.comments).length > 1 && (
-                    <p className="text-[9px] text-white/20 mt-2 font-bold uppercase tracking-widest">
+                    <p className={cn("text-[9px] mt-2 font-bold uppercase tracking-widest", ghostText)}>
                       + {Object.keys(post.comments).length - 1} more responses
                     </p>
                   )}
@@ -391,19 +433,19 @@ export default function SocialSplashPage() {
               <div className="flex gap-2 items-center">
                 <Input 
                   placeholder="Respond to thread..." 
-                  className="h-8 bg-white/5 border-none text-[11px] rounded-full px-4 focus-visible:ring-purple-500/50"
+                  className={cn("h-8 border-none text-[11px] rounded-full px-4 focus-visible:ring-purple-500/50 shadow-none", 
+                    isWhiteTheme ? "bg-gray-100" : "bg-white/5"
+                  )}
                   value={commentText[post.id] || ""}
                   onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
                 />
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-8 w-8 text-white/40 hover:text-purple-400"
+                <button 
+                  className={cn("h-8 w-8 flex items-center justify-center transition-colors", mutedText, "hover:text-purple-500")}
                   onClick={() => handleAddComment(post.id)}
                 >
                   <Send size={14} />
-                </Button>
+                </button>
               </div>
             </div>
           </div>
@@ -412,40 +454,50 @@ export default function SocialSplashPage() {
 
       {/* Full Conversation Dialog */}
       <Dialog open={!!viewingCommentsFor} onOpenChange={() => setViewingCommentsFor(null)}>
-        <DialogContent className="bg-[#111111] border-white/10 text-white max-w-lg rounded-3xl max-h-[80vh] flex flex-col p-0">
-          <DialogHeader className="p-6 border-b border-white/5">
+        <DialogContent className={cn("max-w-lg rounded-3xl max-h-[80vh] flex flex-col p-0 overflow-hidden", 
+          isWhiteTheme ? "bg-white text-black" : "bg-[#111111] border-white/10 text-white"
+        )}>
+          <DialogHeader className={cn("p-6 border-b", isWhiteTheme ? "border-gray-200" : "border-white/5")}>
             <DialogTitle className="font-headline text-lg italic uppercase tracking-tighter">Neural Thread</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth">
             {viewingCommentsFor?.comments ? Object.entries(viewingCommentsFor.comments).map(([id, c]) => (
               <div key={id} className="flex gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/5 shrink-0">
-                  <User size={14} className="text-white/20" />
+                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center border shrink-0", 
+                  isWhiteTheme ? "bg-gray-100 border-gray-200" : "bg-white/5 border-white/5"
+                )}>
+                  <User size={14} className={ghostText} />
                 </div>
-                <div className="bg-white/5 p-3 rounded-2xl flex-1 border border-white/5">
+                <div className={cn("p-3 rounded-2xl flex-1 border", 
+                  isWhiteTheme ? "bg-gray-50 border-gray-100" : "bg-white/5 border-white/5"
+                )}>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[11px] font-bold text-purple-400">@{c.chatName}</span>
-                    <span className="text-[9px] text-white/10">{new Date(c.timestamp).toLocaleTimeString()}</span>
+                    <span className="text-[11px] font-bold text-purple-600">@{c.chatName}</span>
+                    <span className={ghostText + " text-[9px]"}>{new Date(c.timestamp).toLocaleTimeString()}</span>
                   </div>
-                  <p className="text-sm text-white/80">{c.text}</p>
+                  <p className={cn("text-sm", isWhiteTheme ? "text-gray-800" : "text-white/80")}>{c.text}</p>
                 </div>
               </div>
             )) : (
-              <p className="text-center text-white/20 text-xs py-10 uppercase tracking-widest">Quiet conversation...</p>
+              <p className={cn("text-center py-10 uppercase tracking-widest text-xs", ghostText)}>Quiet conversation...</p>
             )}
           </div>
-          <div className="p-6 border-t border-white/5">
+          <div className={cn("p-6 border-t", isWhiteTheme ? "border-gray-200" : "border-white/5")}>
             <div className="flex gap-2">
               <Input 
                 placeholder="Add to the conversation..."
-                className="bg-white/5 border-none h-11 rounded-2xl focus-visible:ring-purple-500/50"
+                className={cn("border-none h-11 rounded-2xl focus-visible:ring-purple-500/50 shadow-none", 
+                  isWhiteTheme ? "bg-gray-100" : "bg-white/5"
+                )}
                 value={commentText[viewingCommentsFor?.id || ""] || ""}
                 onChange={(e) => setCommentText(prev => ({ ...prev, [viewingCommentsFor?.id || ""]: e.target.value }))}
                 onKeyDown={(e) => e.key === 'Enter' && viewingCommentsFor && handleAddComment(viewingCommentsFor.id)}
               />
               <Button 
                 onClick={() => viewingCommentsFor && handleAddComment(viewingCommentsFor.id)}
-                className="h-11 w-11 bg-white text-black rounded-2xl"
+                className={cn("h-11 w-11 rounded-2xl", 
+                  isWhiteTheme ? "bg-black text-white" : "bg-white text-black"
+                )}
               >
                 <Send size={18} />
               </Button>
@@ -456,23 +508,36 @@ export default function SocialSplashPage() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingPost} onOpenChange={() => setEditingPost(null)}>
-        <DialogContent className="bg-[#161616] border-white/10 text-white max-w-lg rounded-3xl">
+        <DialogContent className={cn("max-w-lg rounded-3xl", 
+          isWhiteTheme ? "bg-white text-black" : "bg-[#161616] border-white/10 text-white"
+        )}>
           <DialogHeader>
             <DialogTitle className="font-headline uppercase italic">Update Thread</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Textarea 
-              className="bg-transparent border-white/10 text-[15px] min-h-[120px] rounded-2xl"
+              className={cn("bg-transparent border text-[15px] min-h-[120px] rounded-2xl", 
+                isWhiteTheme ? "border-gray-200" : "border-white/10"
+              )}
               value={editingPost?.text || ""}
               onChange={(e) => setEditingPost(prev => prev ? {...prev, text: e.target.value} : null)}
             />
-            <Button onClick={handleEditPost} className="w-full bg-white text-black rounded-full font-bold uppercase">Save Changes</Button>
+            <Button 
+              onClick={handleEditPost} 
+              className={cn("w-full rounded-full font-bold uppercase", 
+                isWhiteTheme ? "bg-black text-white" : "bg-white text-black"
+              )}
+            >
+              Save Changes
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <footer className="fixed bottom-0 left-0 w-full p-4 text-center bg-black/60 backdrop-blur-lg border-t border-white/5 z-40">
-        <p className="text-[9px] text-white/10 uppercase tracking-[0.6em] font-headline italic">Neural Social Link &bull; SV-12 Pro Node Active</p>
+      <footer className={cn("fixed bottom-0 left-0 w-full p-4 text-center backdrop-blur-lg border-t z-40 transition-colors", 
+        isWhiteTheme ? "bg-white/80 border-gray-200" : "bg-black/60 border-white/5"
+      )}>
+        <p className={cn("text-[9px] uppercase tracking-[0.6em] font-headline italic", ghostText)}>Neural Social Link &bull; SV-12 Pro Node Active</p>
       </footer>
     </div>
   );
