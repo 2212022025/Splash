@@ -387,6 +387,7 @@ export default function SocialSplashPage() {
   const mutedText = isWhiteTheme ? 'text-gray-500' : 'text-white/40';
   const ghostText = isWhiteTheme ? 'text-gray-400' : 'text-white/20';
   const dottedBorder = isWhiteTheme ? 'border-black/40' : 'border-white/10';
+  const dropdownBg = isWhiteTheme ? 'bg-white border-gray-200 text-black' : 'bg-[#161616] border-white/10 text-white';
 
   return (
     <div className={cn("min-h-screen flex flex-col pb-20 transition-colors duration-300", pageBg, textColor)}>
@@ -484,19 +485,25 @@ export default function SocialSplashPage() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className={mutedText}><MoreHorizontal size={18} /></Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className={cn(isWhiteTheme ? "bg-white border-gray-200" : "bg-[#161616] border-white/10 text-white")}>
+                  <DropdownMenuContent align="end" className={cn(dropdownBg)}>
                     <DropdownMenuItem disabled className="text-[10px] opacity-50 font-mono">ID: {post.id}</DropdownMenuItem>
                     {post.chatName === user?.chatName ? (
                       <>
-                        <DropdownMenuItem onClick={() => setEditingPost({id: post.id, text: post.text})}><Edit3 className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => togglePrivate(post.id, post.isPrivate || false)}>
+                        <DropdownMenuItem onClick={() => setEditingPost({id: post.id, text: post.text})} className={cn(isWhiteTheme ? "text-black" : "text-white")}>
+                          <Edit3 className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => togglePrivate(post.id, post.isPrivate || false)} className={cn(isWhiteTheme ? "text-black" : "text-white")}>
                           {post.isPrivate ? <Globe className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
                           {post.isPrivate ? 'Make Public' : 'Make Private'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="text-destructive focus:text-destructive">
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
                       </>
                     ) : (
-                      <DropdownMenuItem onClick={() => handleReport(post)} className="text-destructive"><Flag className="mr-2 h-4 w-4" /> Report</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleReport(post)} className="text-destructive focus:text-destructive">
+                        <Flag className="mr-2 h-4 w-4" /> Report
+                      </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -563,7 +570,7 @@ export default function SocialSplashPage() {
       </main>
 
       <Dialog open={isWalletOpen} onOpenChange={setIsWalletOpen}>
-        <DialogContent className={cn("max-w-lg rounded-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden", isWhiteTheme ? "bg-white text-black" : "bg-[#161616] border-white/10 text-white")}>
+        <DialogContent className={cn("max-w-lg rounded-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden", isWhiteTheme ? "bg-white text-black border-gray-200" : "bg-[#161616] border-white/10 text-white")}>
           <DialogHeader className="p-6 border-b border-white/5 flex flex-col items-center gap-2">
             <div className={cn("w-16 h-16 rounded-full flex items-center justify-center border", isCurrentUserVerified ? "text-emerald-500 border-emerald-500/20" : "text-white/30 border-white/5")}>
               <Wallet size={32} />
@@ -593,7 +600,7 @@ export default function SocialSplashPage() {
                       type="number" 
                       value={withdrawalAmount} 
                       onChange={(e) => setWithdrawalAmount(e.target.value)} 
-                      className={cn("rounded-2xl h-12 border-none px-6 text-lg", isWhiteTheme ? "bg-gray-100" : "bg-white/5")} 
+                      className={cn("rounded-2xl h-12 border-none px-6 text-lg", isWhiteTheme ? "bg-gray-100 text-black" : "bg-white/5")} 
                     />
                     <Button 
                       onClick={handleWithdrawal} 
@@ -634,7 +641,7 @@ export default function SocialSplashPage() {
       </Dialog>
 
       <Dialog open={!!viewingCommentsFor} onOpenChange={() => setViewingCommentsFor(null)}>
-        <DialogContent className={cn("max-w-lg rounded-3xl max-h-[80vh] flex flex-col p-0 overflow-hidden", isWhiteTheme ? "bg-white text-black" : "bg-[#111111] border-white/10 text-white")}>
+        <DialogContent className={cn("max-w-lg rounded-3xl max-h-[80vh] flex flex-col p-0 overflow-hidden", isWhiteTheme ? "bg-white text-black border-gray-200" : "bg-[#111111] border-white/10 text-white")}>
           <DialogHeader className="p-6 border-b border-white/5 flex flex-row items-center justify-between">
             <DialogTitle className="font-headline italic tracking-tighter">Neural Thread</DialogTitle>
           </DialogHeader>
@@ -664,7 +671,7 @@ export default function SocialSplashPage() {
           <div className="p-6 border-t border-white/5 flex gap-2 backdrop-blur-md">
             <Input 
               placeholder="Respond..." 
-              className={cn("h-12 rounded-2xl border-none px-6", isWhiteTheme ? "bg-gray-100" : "bg-white/5")}
+              className={cn("h-12 rounded-2xl border-none px-6", isWhiteTheme ? "bg-gray-100 text-black" : "bg-white/5")}
               value={commentText[viewingCommentsFor?.id || ""] || ""}
               onChange={(e) => setCommentText(prev => ({ ...prev, [viewingCommentsFor?.id || ""]: e.target.value }))}
               onKeyDown={(e) => e.key === 'Enter' && viewingCommentsFor && handleAddComment(viewingCommentsFor.id)}
@@ -675,7 +682,7 @@ export default function SocialSplashPage() {
       </Dialog>
 
       <Dialog open={!!editingPost} onOpenChange={() => setEditingPost(null)}>
-        <DialogContent className={cn("max-w-lg rounded-3xl flex flex-col p-6", isWhiteTheme ? "bg-white text-black" : "bg-[#111111] border-white/10 text-white")}>
+        <DialogContent className={cn("max-w-lg rounded-3xl flex flex-col p-6", isWhiteTheme ? "bg-white text-black border-gray-200" : "bg-[#111111] border-white/10 text-white")}>
           <DialogHeader>
             <DialogTitle className="font-headline italic">Edit Thread</DialogTitle>
           </DialogHeader>
@@ -684,13 +691,13 @@ export default function SocialSplashPage() {
               value={editingPost?.text || ""}
               onChange={(e) => setEditingPost(prev => prev ? {...prev, text: e.target.value} : null)}
               maxLength={MAX_CHARS}
-              className={cn("min-h-[120px] rounded-2xl border-none p-4", isWhiteTheme ? "bg-gray-100" : "bg-white/5")}
+              className={cn("min-h-[120px] rounded-2xl border-none p-4", isWhiteTheme ? "bg-gray-100 text-black" : "bg-white/5")}
             />
             <div className="flex justify-between items-center">
-              <span className="text-[10px] opacity-40 font-bold uppercase">{editingPost?.text.length}/{MAX_CHARS} Characters</span>
+              <span className="text-[10px] opacity-40 font-bold uppercase">{editingPost?.text.length || 0}/{MAX_CHARS} Characters</span>
               <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setEditingPost(null)}>Cancel</Button>
-                <Button onClick={handleEditPost} className="bg-primary px-8 rounded-xl">Save</Button>
+                <Button variant="ghost" onClick={() => setEditingPost(null)} className={cn(isWhiteTheme ? "text-gray-500 hover:text-black" : "")}>Cancel</Button>
+                <Button onClick={handleEditPost} className="bg-primary px-8 rounded-xl font-bold uppercase text-xs">Save Changes</Button>
               </div>
             </div>
           </div>
