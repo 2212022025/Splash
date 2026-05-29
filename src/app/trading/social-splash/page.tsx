@@ -70,6 +70,7 @@ interface WithdrawalRecord {
   id: string;
   amount: number;
   taxApplied: number;
+  totalDeducted: number;
   finalReceived: number;
   timestamp: number;
   status: string;
@@ -90,7 +91,7 @@ export default function SocialSplashPage() {
   const [tick, setTick] = useState(0);
   
   const [isWalletOpen, setIsWalletOpen] = useState(false);
-  const [totalWithdrawn, setTotalWithdrawn] = useState(0);
+  const [totalDeducted, setTotalDeducted] = useState(0);
   const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalRecord[]>([]);
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -100,14 +101,12 @@ export default function SocialSplashPage() {
   const { toast } = useToast();
   const filterUser = searchParams.get('user');
 
-  // Load theme from localStorage strictly on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem('social_splash_theme');
     if (savedTheme === 'white') setIsWhiteTheme(true);
     else if (savedTheme === 'dark') setIsWhiteTheme(false);
   }, []);
 
-  // Update tick for live view growth
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 10000);
     return () => clearInterval(interval);
@@ -151,11 +150,11 @@ export default function SocialSplashPage() {
           ...val
         })).sort((a, b) => b.timestamp - a.timestamp);
         
-        const total = history.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-        setTotalWithdrawn(total);
+        const total = history.reduce((acc, curr) => acc + (curr.totalDeducted || (curr.amount + curr.taxApplied) || 0), 0);
+        setTotalDeducted(total);
         setWithdrawalHistory(history);
       } else {
-        setTotalWithdrawn(0);
+        setTotalDeducted(0);
         setWithdrawalHistory([]);
       }
     });
@@ -193,7 +192,6 @@ export default function SocialSplashPage() {
       const currentViews = getDisplayedViews(p);
       stats[p.chatName].views += currentViews;
       
-      // Proportional Earnings: 1k views = 8rs (text) or 12.5rs (image)
       const rate = p.imageUrl ? 12.5 : 8;
       const earnings = (currentViews / 1000) * rate;
       stats[p.chatName].potentialEarnings += earnings;
@@ -203,7 +201,7 @@ export default function SocialSplashPage() {
 
   const currentUserStats = user ? (userStats[user.chatName] || { views: 0, potentialEarnings: 0 }) : { views: 0, potentialEarnings: 0 };
   const isCurrentUserVerified = currentUserStats.views >= MONETIZATION_THRESHOLD;
-  const currentBalance = isCurrentUserVerified ? (currentUserStats.potentialEarnings - totalWithdrawn) : 0;
+  const currentBalance = isCurrentUserVerified ? Math.max(0, currentUserStats.potentialEarnings - totalDeducted) : 0;
 
   const handleCreatePost = () => {
     if (!newPostText.trim() || !user) return;
@@ -220,7 +218,6 @@ export default function SocialSplashPage() {
       return;
     }
 
-    // Determine algorithmic "destiny"
     const rand = Math.random();
     let targetViews = 0;
     if (rand < 0.20) targetViews = Math.floor(Math.random() * (40 - 25 + 1) + 25);
@@ -254,35 +251,44 @@ export default function SocialSplashPage() {
   };
 
   const handleWithdrawal = () => {
-    const amount = parseFloat(withdrawalAmount);
-    if (isNaN(amount) || amount <= 0) return;
-    if (amount > currentBalance) {
-      toast({ variant: "destructive", title: "Insufficient Funds", description: "Withdrawal exceeds available balance." });
+    const amountRequested = parseFloat(withdrawalAmount);
+    if (isNaN(amountRequested) || amountRequested <= 0) return;
+    
+    const tax = amountRequested * TAX_RATE;
+    const totalNeeded = amountRequested + tax;
+
+    if (totalNeeded > currentBalance) {
+      toast({ 
+        variant: "destructive", 
+        title: "Insufficient Balance", 
+        description: `To withdraw ${amountRequested}rs, you need ${totalNeeded.toFixed(2)}rs to cover the 33% tax.` 
+      });
       return;
     }
-    if (amount < MIN_WITHDRAWAL) {
+    
+    if (amountRequested < MIN_WITHDRAWAL) {
       toast({ variant: "destructive", title: "Minimum Amount", description: `Minimum withdrawal is ${MIN_WITHDRAWAL} rs.` });
       return;
     }
 
     setIsWithdrawing(true);
     const withdrawalRef = ref(db, `social_withdrawals/${user.chatName}`);
-    const tax = amount * TAX_RATE;
-    const finalAmount = amount - tax;
 
     push(withdrawalRef, {
-      amount: amount,
+      amount: amountRequested,
       taxApplied: tax,
-      finalReceived: finalAmount,
+      totalDeducted: totalNeeded,
+      finalReceived: amountRequested,
       timestamp: Date.now(),
       status: 'processed'
     }).then(() => {
       toast({ 
         title: "Withdrawal Successful", 
-        description: `Requested ${amount}rs. Received ${finalAmount.toFixed(2)}rs after 33% tax.` 
+        description: `Successfully withdrawn ${amountRequested}rs. Total deducted from node: ${totalNeeded.toFixed(2)}rs.` 
       });
       setWithdrawalAmount("");
       setIsWithdrawing(false);
+      setIsWalletOpen(false);
     });
   };
 
@@ -368,6 +374,7 @@ export default function SocialSplashPage() {
   const headerBg = isWhiteTheme ? 'bg-white/80 border-gray-200' : 'bg-black/40 border-white/5';
   const mutedText = isWhiteTheme ? 'text-gray-500' : 'text-white/40';
   const ghostText = isWhiteTheme ? 'text-gray-400' : 'text-white/20';
+  const dottedBorder = isWhiteTheme ? 'border-black/40' : 'border-white/10';
 
   return (
     <div className={cn("min-h-screen flex flex-col pb-20 transition-colors duration-300", pageBg, textColor)}>
@@ -403,7 +410,7 @@ export default function SocialSplashPage() {
 
       <main className="flex-1 max-w-xl mx-auto w-full p-4 space-y-6">
         {view === 'feed' && !filterUser && (
-          <div className={cn("border border-dashed rounded-3xl p-5 space-y-4 shadow-sm", cardBg, isWhiteTheme ? "border-black/40" : "border-white/10")}>
+          <div className={cn("border border-dashed rounded-3xl p-5 space-y-4 shadow-sm", cardBg, dottedBorder)}>
             <div className="flex gap-4">
               <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border shrink-0", isWhiteTheme ? "bg-gray-100 border-gray-200" : "bg-white/5 border-white/5")}>
                 <User size={20} className={ghostText} />
@@ -534,7 +541,6 @@ export default function SocialSplashPage() {
         })}
       </main>
 
-      {/* Wallet Dialog */}
       <Dialog open={isWalletOpen} onOpenChange={setIsWalletOpen}>
         <DialogContent className={cn("max-w-lg rounded-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden", isWhiteTheme ? "bg-white text-black" : "bg-[#161616] border-white/10 text-white")}>
           <DialogHeader className="p-6 border-b border-white/5 flex flex-col items-center gap-2">
@@ -576,7 +582,7 @@ export default function SocialSplashPage() {
                       {isWithdrawing ? 'Processing' : 'Withdraw'}
                     </Button>
                   </div>
-                  <p className="text-[9px] text-center opacity-40 uppercase tracking-widest">33% Network Tax Applied to all transactions</p>
+                  <p className="text-[9px] text-center opacity-40 uppercase tracking-widest">33% Network Tax Applied on top of withdrawal amount</p>
                 </div>
 
                 {withdrawalHistory.length > 0 && (
@@ -592,8 +598,8 @@ export default function SocialSplashPage() {
                             <span className="text-[9px] opacity-40 uppercase font-bold">{new Date(w.timestamp).toLocaleDateString()} &bull; {new Date(w.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                           <div className="flex flex-col items-end">
-                            <span className="text-[10px] text-emerald-500 font-bold uppercase">Received: {w.finalReceived.toFixed(2)} rs</span>
-                            <span className="text-[8px] opacity-30 uppercase font-bold">Tax: {w.taxApplied.toFixed(2)} rs</span>
+                            <span className="text-[10px] text-emerald-500 font-bold uppercase">Net Received: {w.finalReceived.toFixed(2)} rs</span>
+                            <span className="text-[8px] opacity-30 uppercase font-bold">Tax Paid: {w.taxApplied.toFixed(2)} rs</span>
                           </div>
                         </div>
                       ))}
@@ -606,7 +612,6 @@ export default function SocialSplashPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Comments Dialog */}
       <Dialog open={!!viewingCommentsFor} onOpenChange={() => setViewingCommentsFor(null)}>
         <DialogContent className={cn("max-w-lg rounded-3xl max-h-[80vh] flex flex-col p-0 overflow-hidden", isWhiteTheme ? "bg-white text-black" : "bg-[#111111] border-white/10 text-white")}>
           <DialogHeader className="p-6 border-b border-white/5 flex flex-row items-center justify-between">
