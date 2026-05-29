@@ -100,10 +100,11 @@ export default function SocialSplashPage() {
   const { toast } = useToast();
   const filterUser = searchParams.get('user');
 
-  // Load theme from localStorage
+  // Load theme from localStorage strictly on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem('social_splash_theme');
     if (savedTheme === 'white') setIsWhiteTheme(true);
+    else if (savedTheme === 'dark') setIsWhiteTheme(false);
   }, []);
 
   // Update tick for live view growth
@@ -191,11 +192,14 @@ export default function SocialSplashPage() {
       if (!stats[p.chatName]) stats[p.chatName] = { views: 0, potentialEarnings: 0 };
       const currentViews = getDisplayedViews(p);
       stats[p.chatName].views += currentViews;
-      const earnings = p.imageUrl ? 12.5 : 8;
+      
+      // Proportional Earnings: 1k views = 8rs (text) or 12.5rs (image)
+      const rate = p.imageUrl ? 12.5 : 8;
+      const earnings = (currentViews / 1000) * rate;
       stats[p.chatName].potentialEarnings += earnings;
     });
     return stats;
-  }, [posts, tick]); // Recalculate on every tick
+  }, [posts, tick]);
 
   const currentUserStats = user ? (userStats[user.chatName] || { views: 0, potentialEarnings: 0 }) : { views: 0, potentialEarnings: 0 };
   const isCurrentUserVerified = currentUserStats.views >= MONETIZATION_THRESHOLD;
@@ -505,7 +509,7 @@ export default function SocialSplashPage() {
               {isVerified && post.chatName === user?.chatName && (
                 <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
                   <Banknote size={16} className="text-emerald-500" />
-                  <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-tight">Earnings Active: {post.imageUrl ? '12.5rs' : '8rs'}</span>
+                  <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-tight">Earnings Active: {(currentViews / 1000 * (post.imageUrl ? 12.5 : 8)).toFixed(2)}rs</span>
                 </div>
               )}
 
