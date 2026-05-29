@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, MessageSquare, PlusCircle, LogIn, AlertCircle } from 'lucide-react';
+import { User, Mail, MessageSquare, PlusCircle, LogIn } from 'lucide-react';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: { username: string; email: string; chatName: string }) => void;
@@ -53,10 +53,10 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           localStorage.setItem('splash_last_email', email);
           onLoginSuccess(foundUser);
         } else {
-          toast({ variant: "destructive", title: "Login Failed", description: "Account not found with these credentials." });
+          toast({ variant: "destructive", title: "Login Failed", description: "Invalid Credentials" });
         }
       } else {
-        toast({ variant: "destructive", title: "Login Failed", description: "No users exist in the database yet." });
+        toast({ variant: "destructive", title: "Login Failed", description: "Invalid Credentials" });
       }
     } catch (error) {
       toast({ variant: "destructive", title: "System Error", description: "Database communication failure." });
@@ -68,7 +68,6 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validations
     if (!username || !email || !chatName) {
       toast({ variant: "destructive", title: "Error", description: "All fields are required" });
       return;
@@ -78,7 +77,6 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
       return;
     }
 
-    // Rate limiting check (2 hours)
     const lastCreation = localStorage.getItem('splash_last_creation');
     if (lastCreation) {
       const hoursSince = (Date.now() - parseInt(lastCreation)) / (1000 * 60 * 60);
