@@ -178,13 +178,13 @@ export default function BitcoinTradingPage() {
     const CHART_RESURRECT_CHANCE = 0.15;
 
     const firebaseConfig = {
-      apiKey: "AIzaSyBpvng4Am-rhTPwSvWKxAGN2WCqBwsoAaM",
-      authDomain: "bitcoin-fa4b2.firebaseapp.com",
-      databaseURL: "https://bitcoin-fa4b2-default-rtdb.firebaseio.com",
-      projectId: "bitcoin-fa4b2",
-      storageBucket: "bitcoin-fa4b2.firebasestorage.app",
-      messagingSenderId: "311271969444",
-      appId: "1:311271969444:web:7fb50ae0439b9bde600c31"
+      apiKey: "AIzaSyAp5fG4-8NkSSP1S6ND6vSk8HeZRXrXz7M",
+      authDomain: "splash-cc98f.firebaseapp.com",
+      databaseURL: "https://splash-cc98f-default-rtdb.firebaseio.com",
+      projectId: "splash-cc98f",
+      storageBucket: "splash-cc98f.firebasestorage.app",
+      messagingSenderId: "526650808551",
+      appId: "1:526650808551:web:af7818987af38b946d2a42"
     };
 
     let usdBalance = START_USD;
@@ -228,7 +228,9 @@ export default function BitcoinTradingPage() {
     function formatUSD(n) { return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     function addHistory(side, bet, resultText) {
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + new Date().toLocaleTimeString() + '</td><td>' + side + '</td><td>' + formatUSD(bet) + '</td><td>' + resultText + '</td>';
+      const timeStr = new Date().toLocaleTimeString();
+      const betStr = formatUSD(bet);
+      tr.innerHTML = '<td>' + timeStr + '</td><td>' + side + '</td><td>' + betStr + '</td><td>' + resultText + '</td>';
       historyTbody.prepend(tr);
       while (historyTbody.childNodes.length > 60) historyTbody.removeChild(historyTbody.lastChild);
     }
