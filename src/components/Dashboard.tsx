@@ -24,13 +24,13 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#121212] flex flex-col">
-      <header className="h-20 border-b border-white/5 bg-[#121212]/80 backdrop-blur-md sticky top-0 z-40 px-6 flex items-center justify-between">
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <header className="h-20 border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-40 px-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center neon-glow">
-            <Zap size={18} className="text-accent" />
+          <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center border border-white/10 neon-glow">
+            <Zap size={22} className="text-accent" />
           </div>
-          <h1 className="font-headline text-2xl tracking-tighter text-white font-extrabold uppercase italic">Splash</h1>
+          <h1 className="font-headline text-3xl tracking-tighter text-white font-extrabold uppercase italic">Splash</h1>
         </div>
 
         <Button variant="ghost" size="icon" onClick={onLogout} className="text-white/40 hover:text-destructive">
@@ -38,73 +38,82 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
         </Button>
       </header>
 
-      <main className="flex-1 p-6 max-w-2xl mx-auto w-full space-y-4 py-12">
-        <div className="grid grid-cols-1 gap-4">
+      <main className="flex-1 p-6 max-w-2xl mx-auto w-full space-y-6 py-12">
+        <div className="space-y-4">
           
           {/* Gaming Hub */}
-          <a href="https://consolesprox.netlify.app/" target="_blank" rel="noopener noreferrer" className="block">
-            <div className="bg-[#1a1a1a] border border-white/5 p-6 rounded-2xl flex items-center gap-6 hover:bg-primary/10 hover:border-accent/40 transition-all group">
-              <div className="w-14 h-14 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
-                <Gamepad2 size={28} className="text-blue-400" />
+          <Link href="/gaming-hub" className="block animate-in slide-in-from-bottom-2 duration-300">
+            <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-blue-500/10 hover:border-blue-500/40 transition-all group active:scale-95 duration-200">
+              <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
+                <Gamepad2 size={32} className="text-blue-400" />
               </div>
-              <span className="text-xl font-headline font-bold text-white uppercase tracking-tight">Gaming Hub</span>
+              <div className="flex flex-col">
+                <span className="text-2xl font-headline font-bold text-white uppercase tracking-tight">Gaming Hub</span>
+                <span className="text-white/30 text-xs font-bold uppercase tracking-widest">External Node 01</span>
+              </div>
             </div>
-          </a>
+          </Link>
 
           {/* AI Services */}
-          <Link href="/ai-services" className="block">
-            <div className="bg-[#1a1a1a] border border-white/5 p-6 rounded-2xl flex items-center gap-6 hover:bg-accent/10 hover:border-accent/40 transition-all group">
-              <div className="w-14 h-14 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 group-hover:scale-110 transition-transform">
-                <BrainCircuit size={28} className="text-cyan-400" />
+          <Link href="/ai-services" className="block animate-in slide-in-from-bottom-4 duration-400">
+            <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-cyan-500/10 hover:border-cyan-500/40 transition-all group active:scale-95 duration-200">
+              <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 group-hover:scale-110 transition-transform">
+                <BrainCircuit size={32} className="text-cyan-400" />
               </div>
-              <span className="text-xl font-headline font-bold text-white uppercase tracking-tight">AI Services</span>
+              <div className="flex flex-col">
+                <span className="text-2xl font-headline font-bold text-white uppercase tracking-tight">AI Services</span>
+                <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Neural Link 02</span>
+              </div>
             </div>
           </Link>
 
           {/* Account & Service */}
           <Dialog>
             <DialogTrigger asChild>
-              <div className="cursor-pointer bg-[#1a1a1a] border border-white/5 p-6 rounded-2xl flex items-center gap-6 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all group">
-                <div className="w-14 h-14 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
-                  <UserCircle size={28} className="text-purple-400" />
+              <div className="cursor-pointer bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all group active:scale-95 duration-200 animate-in slide-in-from-bottom-6 duration-500">
+                <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
+                  <UserCircle size={32} className="text-purple-400" />
                 </div>
-                <span className="text-xl font-headline font-bold text-white uppercase tracking-tight">Account & Service</span>
+                <div className="flex flex-col">
+                  <span className="text-2xl font-headline font-bold text-white uppercase tracking-tight">Account & Service</span>
+                  <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Profile Control</span>
+                </div>
               </div>
             </DialogTrigger>
-            <DialogContent className="bg-[#1a1a1a] border-white/10 text-white max-w-sm rounded-3xl">
+            <DialogContent className="bg-[#161616] border-white/5 text-white max-w-sm rounded-[2rem] p-8">
               <DialogHeader>
-                <DialogTitle className="font-headline text-2xl uppercase italic tracking-tighter">My Account</DialogTitle>
+                <DialogTitle className="font-headline text-3xl uppercase italic tracking-tighter text-center mb-6">My Account</DialogTitle>
               </DialogHeader>
-              <div className="space-y-6 py-4">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <UserCircle size={18} className="text-accent" />
+              <div className="space-y-8">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <UserCircle size={20} className="text-accent" />
                     <div>
-                      <p className="text-[10px] uppercase text-white/40 tracking-widest">Username</p>
-                      <p className="font-bold">{user.username}</p>
+                      <p className="text-[10px] uppercase text-white/30 tracking-[0.2em] font-bold">Username</p>
+                      <p className="font-bold text-lg">{user.username}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <MessageSquare size={18} className="text-accent" />
+                  <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <MessageSquare size={20} className="text-accent" />
                     <div>
-                      <p className="text-[10px] uppercase text-white/40 tracking-widest">Chat Name</p>
-                      <p className="font-bold">@{user.chatName}</p>
+                      <p className="text-[10px] uppercase text-white/30 tracking-[0.2em] font-bold">Chat Name</p>
+                      <p className="font-bold text-lg">@{user.chatName}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Mail size={18} className="text-accent" />
+                  <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <Mail size={20} className="text-accent" />
                     <div>
-                      <p className="text-[10px] uppercase text-white/40 tracking-widest">Email</p>
-                      <p className="font-bold">{user.email}</p>
+                      <p className="text-[10px] uppercase text-white/30 tracking-[0.2em] font-bold">Email</p>
+                      <p className="font-bold text-sm truncate max-w-[200px]">{user.email}</p>
                     </div>
                   </div>
                 </div>
                 
                 <Button 
                   onClick={handleHelpReport}
-                  className="w-full bg-accent text-background hover:bg-accent/90 font-headline uppercase tracking-widest text-xs h-12 flex items-center gap-2"
+                  className="w-full bg-accent text-background hover:bg-accent/90 font-headline uppercase tracking-widest text-xs h-14 rounded-2xl flex items-center justify-center gap-2 group"
                 >
-                  <HelpCircle size={16} /> Help & Report
+                  <HelpCircle size={18} className="group-hover:rotate-12 transition-transform" /> Help & Report
                 </Button>
               </div>
             </DialogContent>
@@ -113,8 +122,8 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
         </div>
       </main>
 
-      <footer className="p-8 text-center border-t border-white/5">
-        <p className="text-[10px] text-white/20 uppercase tracking-[0.4em] font-headline">Splash &bull; Powered by VLF-Tec</p>
+      <footer className="p-8 text-center mt-auto">
+        <p className="text-[10px] text-white/10 uppercase tracking-[0.6em] font-headline">Splash &bull; VLF-Tec System</p>
       </footer>
     </div>
   );

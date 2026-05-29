@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Zap, Send, ArrowLeft, Bot, User } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface Message {
   type: 'user' | 'ai';
@@ -21,6 +21,7 @@ export default function AIServicesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,7 +40,7 @@ export default function AIServicesPage() {
     try {
       await fetch(SCRIPT_URL, {
         method: "POST",
-        mode: 'no-cors', // Standard for Google Script macros
+        mode: 'no-cors',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: "Anonymous",
@@ -69,12 +70,8 @@ export default function AIServicesPage() {
     if (text.includes("event") || text.includes("spin")) return "The Splash Event section includes a spin wheel reward system with 33% win chance.";
     if (text.includes("help")) return "You can report issues in the Help & Report section or ask me anything related to the app.";
     if (text.includes("feature") || text.includes("splash app")) return "Splash App 2.0 includes: 🎡 Event Spin, 🤖 AI Chat, 🛠 Report System, 🐶 Warning, 📡 Transmission, 📺 Live News and more.";
-    if (text.includes("select animal")) return "🐶 🐱 🐯 🦁 🐵 Pick your favorite!";
-    if (text.includes("choose number")) return "🔢 Choose: 7️⃣, 13️⃣, 42️⃣, 99️⃣";
-
+    
     try {
-      // Basic math evaluation for any unrecognized text that can be calculated
-      // Note: In a production app, we'd use a math library instead of eval
       const result = eval(text.replace(/[^-()\d/*+.]/g, ''));
       if (!isNaN(result) && typeof result === 'number' && isFinite(result)) return `🧮 Result is: ${result}`;
     } catch (e) {}
@@ -112,7 +109,7 @@ export default function AIServicesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#121212] flex flex-col text-white font-body relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col text-white relative overflow-hidden">
       {/* Background Glow */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full"></div>
@@ -128,10 +125,13 @@ export default function AIServicesPage() {
 
       {/* Header */}
       <header className="h-16 border-b border-white/5 bg-black/40 backdrop-blur-xl sticky top-0 z-50 px-6 flex items-center gap-4">
-        <Button asChild variant="ghost" size="icon" className="text-white/60 hover:text-white">
-          <Link href="/">
-            <ArrowLeft size={20} />
-          </Link>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="text-white/60 hover:text-white"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft size={20} />
         </Button>
         <div className="flex items-center gap-2">
           <Zap size={20} className="text-accent" />
@@ -154,7 +154,7 @@ export default function AIServicesPage() {
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 ${msg.type === 'user' ? 'bg-primary/40' : 'bg-white/5'}`}>
               {msg.type === 'user' ? <User size={16} /> : <Bot size={16} className="text-accent" />}
             </div>
-            <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${msg.type === 'user' ? 'bg-primary text-white rounded-tr-none' : 'bg-[#1a1a1a] text-white/90 rounded-tl-none border border-white/5'}`}>
+            <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${msg.type === 'user' ? 'bg-primary text-white rounded-tr-none' : 'bg-[#161616] text-white/90 rounded-tl-none border border-white/5'}`}>
               {msg.text}
             </div>
           </div>
@@ -164,7 +164,7 @@ export default function AIServicesPage() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-white/5 border border-white/10">
               <Bot size={16} className="text-accent" />
             </div>
-            <div className="bg-[#1a1a1a] px-4 py-3 rounded-2xl rounded-tl-none border border-white/5 flex gap-1">
+            <div className="bg-[#161616] px-4 py-3 rounded-2xl rounded-tl-none border border-white/5 flex gap-1">
               <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"></div>
               <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:0.2s]"></div>
               <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:0.4s]"></div>
@@ -187,7 +187,7 @@ export default function AIServicesPage() {
                 handleSendMessage();
               }
             }}
-            className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-white/20 min-h-[60px] pr-14 focus:ring-accent transition-all rounded-xl"
+            className="bg-[#161616] border-white/10 text-white placeholder:text-white/20 min-h-[60px] pr-14 focus:ring-accent transition-all rounded-xl"
             disabled={isLoading}
           />
           <Button 

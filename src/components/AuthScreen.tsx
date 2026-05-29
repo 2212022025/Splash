@@ -3,14 +3,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, get, child } from 'firebase/database';
+import { ref, get, child, set, ref as rtdbRef } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, MessageSquare, PlusCircle, LogIn, AlertCircle } from 'lucide-react';
-import { set, ref as rtdbRef } from 'firebase/database';
+import { User, Mail, MessageSquare, PlusCircle, LogIn, Zap } from 'lucide-react';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: { username: string; email: string; chatName: string }) => void;
@@ -46,7 +45,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
       if (snapshot.exists()) {
         const users = snapshot.val();
         const foundUser = Object.values(users).find(
-          (u: any) => u.username === username && u.email === email
+          (u: any) => u.username.toLowerCase() === username.toLowerCase() && u.email.toLowerCase() === email.toLowerCase()
         ) as any;
 
         if (foundUser) {
@@ -78,19 +77,6 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
       return;
     }
 
-    const lastCreation = localStorage.getItem('splash_last_creation');
-    if (lastCreation) {
-      const hoursSince = (Date.now() - parseInt(lastCreation)) / (1000 * 60 * 60);
-      if (hoursSince < 2) {
-        toast({ 
-          variant: "destructive", 
-          title: "Account Limit", 
-          description: `Please wait ${Math.ceil(2 - hoursSince)} hour(s) before creating another account.` 
-        });
-        return;
-      }
-    }
-
     setIsLoading(true);
     try {
       const userRef = rtdbRef(db, `users/${chatName}`);
@@ -102,11 +88,10 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         const newUser = { username, email, chatName, createdAt: Date.now() };
         await set(userRef, newUser);
         
-        localStorage.setItem('splash_last_creation', Date.now().toString());
         localStorage.setItem('splash_last_username', username);
         localStorage.setItem('splash_last_email', email);
         
-        toast({ title: "Account Created", description: "Your account is ready for use." });
+        toast({ title: "Account Created", description: "Welcome to Splash." });
         onLoginSuccess(newUser);
       }
     } catch (error) {
@@ -117,85 +102,98 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#121212]">
-      <Card className="w-full max-w-md bg-[#1a1a1a] border-white/5 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-1 h-full bg-accent neon-glow"></div>
-        <CardHeader className="text-center pt-10">
-          <CardTitle className="font-headline text-4xl text-white tracking-tighter">
-            {isLogin ? 'Login to Splash' : 'Join Splash'}
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a] relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[150px] rounded-full"></div>
+      <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-accent/5 blur-[150px] rounded-full"></div>
+
+      <div className="mb-8 flex flex-col items-center gap-2 animate-in fade-in zoom-in duration-700">
+        <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center border border-white/10 neon-glow">
+          <Zap size={32} className="text-accent" />
+        </div>
+        <h1 className="font-headline text-5xl font-extrabold tracking-tighter italic uppercase text-white">Splash</h1>
+      </div>
+
+      <Card className="w-full max-w-md bg-[#161616]/80 backdrop-blur-xl border-white/5 shadow-2xl relative overflow-hidden animate-in slide-in-from-bottom-10 duration-500">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent"></div>
+        <CardHeader className="text-center pt-8 pb-4">
+          <CardTitle className="font-headline text-2xl text-white uppercase tracking-tight">
+            {isLogin ? 'Welcome Back' : 'Create Identity'}
           </CardTitle>
-          <CardDescription className="font-body text-white/50">
-            {isLogin ? 'Enter credentials' : 'Create identity'}
+          <CardDescription className="font-body text-white/40">
+            {isLogin ? 'Enter your network credentials' : 'Join the Splash decentralized network'}
           </CardDescription>
         </CardHeader>
         
         <CardContent>
-          <form onSubmit={isLogin ? handleLogin : handleSignup} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-xs uppercase tracking-widest text-accent font-semibold flex items-center gap-2">
-                <User size={14} className="text-accent" /> Username
+          <form onSubmit={isLogin ? handleLogin : handleSignup} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="username" className="text-[10px] uppercase tracking-[0.2em] text-accent/70 font-bold flex items-center gap-2">
+                <User size={12} /> Username
               </Label>
               <Input 
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Username"
-                className="bg-[#121212] border-white/10 text-white placeholder:text-white/20 focus:ring-accent"
+                placeholder="username"
+                className="bg-[#121212] border-white/10 text-white placeholder:text-white/10 h-11 focus:ring-accent"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs uppercase tracking-widest text-accent font-semibold flex items-center gap-2">
-                <Mail size={14} className="text-accent" /> Email
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-[10px] uppercase tracking-[0.2em] text-accent/70 font-bold flex items-center gap-2">
+                <Mail size={12} /> Email Address
               </Label>
               <Input 
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
-                className="bg-[#121212] border-white/10 text-white placeholder:text-white/20 focus:ring-accent"
+                placeholder="user@network.com"
+                className="bg-[#121212] border-white/10 text-white placeholder:text-white/10 h-11 focus:ring-accent"
               />
             </div>
 
             {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="chatName" className="text-xs uppercase tracking-widest text-accent font-semibold flex items-center gap-2">
-                  <MessageSquare size={14} className="text-accent" /> Chat Name
+              <div className="space-y-1.5">
+                <Label htmlFor="chatName" className="text-[10px] uppercase tracking-[0.2em] text-accent/70 font-bold flex items-center gap-2">
+                  <MessageSquare size={12} /> Unique Chat Name
                 </Label>
                 <Input 
                   id="chatName"
                   value={chatName}
                   onChange={(e) => setChatName(e.target.value)}
-                  placeholder="Chat Name"
-                  className="bg-[#121212] border-white/10 text-white placeholder:text-white/20 focus:ring-accent"
+                  placeholder="chatname"
+                  className="bg-[#121212] border-white/10 text-white placeholder:text-white/10 h-11 focus:ring-accent"
                 />
               </div>
             )}
 
             <Button 
               type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-white h-12 rounded-lg font-headline tracking-widest uppercase text-sm mt-4 transition-all duration-300"
+              className="w-full bg-primary hover:bg-primary/90 text-white h-12 rounded-xl font-headline tracking-widest uppercase text-xs mt-4 transition-all duration-300"
               disabled={isLoading}
             >
-              {isLoading ? 'Processing...' : (isLogin ? 'Login' : 'Signup')}
+              {isLoading ? 'Decrypting...' : (isLogin ? 'Login Network' : 'Initialize Account')}
             </Button>
           </form>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4 pb-8">
+        <CardFooter className="flex flex-col gap-4 pb-8 pt-2">
           <button 
             onClick={() => setIsLogin(!isLogin)}
-            className="text-sm text-accent/80 hover:text-accent font-medium transition-colors flex items-center gap-2"
+            className="text-[10px] text-white/30 hover:text-accent uppercase tracking-widest font-bold transition-colors flex items-center gap-2"
           >
             {isLogin ? (
-              <><PlusCircle size={16} /> New Account</>
+              <><PlusCircle size={14} /> Request Access</>
             ) : (
-              <><LogIn size={16} /> Have account?</>
+              <><LogIn size={14} /> Existing Node</>
             )}
           </button>
         </CardFooter>
       </Card>
+      
+      <p className="mt-8 text-[9px] text-white/20 uppercase tracking-[0.4em]">Secure Transmission Active &bull; VLF-TEC</p>
     </div>
   );
 }
