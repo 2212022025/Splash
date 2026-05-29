@@ -78,8 +78,8 @@ export default function PublicChatPage() {
     const banDuration = 30 * 60 * 1000; // 30 mins
     const bannedUntil = Date.now() + banDuration;
     
-    // Save ban to Firebase RTDB
-    set(ref(db, `bans/${user.chatName}`), bannedUntil);
+    // Save ban directly to user record in Firebase RTDB
+    set(ref(db, `users/${user.chatName}/bannedUntil`), bannedUntil);
     
     localStorage.setItem('splash_banned_until', bannedUntil.toString());
 

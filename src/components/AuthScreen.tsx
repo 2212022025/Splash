@@ -51,23 +51,17 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
         ) as any;
 
         if (foundUser) {
-          // Check remote ban
-          const banRef = ref(db, `bans/${foundUser.chatName}`);
-          const banSnap = await get(banRef);
-          
-          if (banSnap.exists()) {
-            const bannedUntil = banSnap.val();
-            if (bannedUntil > Date.now()) {
-              localStorage.setItem('splash_banned_until', bannedUntil.toString());
-              toast({ 
-                variant: "destructive", 
-                title: "Account Banned", 
-                description: "Your account is currently suspended from the network." 
-              });
-              onBannedAttempt();
-              setIsLoading(false);
-              return;
-            }
+          // Check ban status directly from user record
+          if (foundUser.bannedUntil && foundUser.bannedUntil > Date.now()) {
+            localStorage.setItem('splash_banned_until', foundUser.bannedUntil.toString());
+            toast({ 
+              variant: "destructive", 
+              title: "Account Banned", 
+              description: "Your account is currently suspended from the network." 
+            });
+            onBannedAttempt();
+            setIsLoading(false);
+            return;
           }
 
           localStorage.setItem('splash_last_username', username);

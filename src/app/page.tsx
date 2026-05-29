@@ -69,16 +69,19 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [checkSuspension]);
 
-  // Sync remote ban for active user
+  // Sync remote ban for active user from their profile record
   useEffect(() => {
     if (user) {
-      const banRef = ref(db, `bans/${user.chatName}`);
+      const banRef = ref(db, `users/${user.chatName}/bannedUntil`);
       const unsubscribe = onValue(banRef, (snapshot) => {
         if (snapshot.exists()) {
           const bannedUntil = snapshot.val();
           if (bannedUntil > Date.now()) {
             localStorage.setItem('splash_banned_until', bannedUntil.toString());
             checkSuspension(true);
+          } else {
+            localStorage.removeItem('splash_banned_until');
+            setSuspensionInfo({ active: false, remaining: 0 });
           }
         }
       });
