@@ -1,9 +1,9 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, push, onValue, set, remove, query, limitToLast, runTransaction } from 'firebase/database';
+import { ref, push, onValue, set, remove, query, limitToLast, runTransaction, update } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,7 +18,13 @@ import {
   Send,
   Plus,
   Image as ImageIcon,
-  User
+  User,
+  Trash2,
+  Edit3,
+  Lock,
+  Globe,
+  BarChart3,
+  X
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -28,7 +34,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+const ABUSE_WORDS = ["fuck", "bitch", "chutiya", "mc", "bc", "gandu", "madarchod", "fake"];
 
 interface SocialPost {
   id: string;
@@ -39,6 +47,7 @@ interface SocialPost {
   likes?: Record<string, boolean>;
   views: number;
   comments?: Record<string, { chatName: string; text: string; timestamp: number }>;
+  isPrivate?: boolean;
 }
 
 export default function SocialSplashPage() {
@@ -48,12 +57,13 @@ export default function SocialSplashPage() {
   const [newPostImageUrl, setNewPostImageUrl] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const [commentText, setCommentText] = useState<Record<string, string>>({});
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewingCommentsFor, setViewingCommentsFor] = useState<SocialPost | null>(null);
+  const [view, setView] = useState<'feed' | 'analytics'>('feed');
+  const [editingPost, setEditingPost] = useState<{id: string, text: string} | null>(null);
   
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  
   const filterUser = searchParams.get('user');
 
   useEffect(() => {
@@ -64,7 +74,7 @@ export default function SocialSplashPage() {
     }
     setUser(JSON.parse(sessionUser));
 
-    const postsRef = query(ref(db, 'social_posts'), limitToLast(50));
+    const postsRef = query(ref(db, 'social_posts'), limitToLast(100));
     const unsubscribe = onValue(postsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -83,47 +93,73 @@ export default function SocialSplashPage() {
 
   const handleCreatePost = () => {
     if (!newPostText.trim() || !user) return;
-    setIsPosting(true);
 
+    // Daily Limit Check (5 posts)
+    const today = new Date().setHours(0,0,0,0);
+    const todayCount = posts.filter(p => p.chatName === user.chatName && p.timestamp >= today).length;
+    
+    if (todayCount >= 5) {
+      toast({ 
+        variant: "destructive",
+        title: "Daily Limit Reached", 
+        description: "Network security protocols allow only 5 broadcasts per solar cycle." 
+      });
+      return;
+    }
+
+    setIsPosting(true);
     const postRef = ref(db, 'social_posts');
     push(postRef, {
       chatName: user.chatName,
       text: newPostText,
       imageUrl: newPostImageUrl || null,
       timestamp: Date.now(),
-      views: 0
+      views: 0,
+      isPrivate: false
     });
 
     setNewPostText("");
     setNewPostImageUrl("");
     setIsPosting(false);
-    setIsDialogOpen(false);
-    toast({ title: "Post published", description: "Your thread is live on the network." });
+    toast({ title: "Broadcast Successful", description: "Thread indexed on the Splash network." });
+  };
+
+  const handleEditPost = () => {
+    if (!editingPost || !editingPost.text.trim()) return;
+    update(ref(db, `social_posts/${editingPost.id}`), { text: editingPost.text });
+    setEditingPost(null);
+    toast({ title: "Thread Updated", description: "Information updated on the grid." });
+  };
+
+  const handleDeletePost = (postId: string) => {
+    remove(ref(db, `social_posts/${postId}`));
+    toast({ title: "Thread Deleted", description: "Information purged from the network." });
+  };
+
+  const togglePrivate = (postId: string, current: boolean) => {
+    update(ref(db, `social_posts/${postId}`), { isPrivate: !current });
+    toast({ 
+      title: !current ? "Node Restricted" : "Node Public", 
+      description: !current ? "Thread is now private." : "Thread is now visible to the network." 
+    });
   };
 
   const handleLike = (postId: string, currentLikes?: Record<string, boolean>) => {
     if (!user) return;
     const isLiked = currentLikes && currentLikes[user.chatName];
     const likeRef = ref(db, `social_posts/${postId}/likes/${user.chatName}`);
-    
-    if (isLiked) {
-      remove(likeRef);
-    } else {
-      set(likeRef, true);
-    }
+    if (isLiked) remove(likeRef); else set(likeRef, true);
   };
 
   const handleAddComment = (postId: string) => {
     const text = commentText[postId]?.trim();
     if (!text || !user) return;
-
     const commentRef = ref(db, `social_posts/${postId}/comments`);
     push(commentRef, {
       chatName: user.chatName,
       text: text,
       timestamp: Date.now()
     });
-
     setCommentText(prev => ({ ...prev, [postId]: "" }));
   };
 
@@ -139,26 +175,29 @@ export default function SocialSplashPage() {
       timestamp: Date.now()
     });
 
-    const banUntil = Date.now() + (30 * 60 * 1000);
-    set(ref(db, `users/${post.chatName}/bannedUntil`), banUntil);
+    // Ban only if post contains bad words
+    const content = post.text.toLowerCase();
+    const hasAbuse = ABUSE_WORDS.some(word => content.includes(word));
 
-    toast({ 
-      variant: "destructive",
-      title: "User Banned", 
-      description: `${post.chatName} suspended for 30m following your report.` 
-    });
+    if (hasAbuse) {
+      const banUntil = Date.now() + (30 * 60 * 1000);
+      set(ref(db, `users/${post.chatName}/bannedUntil`), banUntil);
+      toast({ variant: "destructive", title: "Policy Enforcement", description: "Violation detected. User suspended." });
+    } else {
+      toast({ title: "Report Logged", description: "The grid is monitoring this node for activity." });
+    }
   };
 
   const incrementView = (postId: string) => {
     const viewRef = ref(db, `social_posts/${postId}/views`);
-    runTransaction(viewRef, (current) => {
-      return (current || 0) + 1;
-    });
+    runTransaction(viewRef, (current) => (current || 0) + 1);
   };
 
-  const displayedPosts = filterUser 
-    ? posts.filter(p => p.chatName === filterUser)
-    : posts;
+  const displayedPosts = (view === 'analytics')
+    ? posts.filter(p => p.chatName === user?.chatName)
+    : (filterUser 
+        ? posts.filter(p => p.chatName === filterUser && (!p.isPrivate || p.chatName === user?.chatName))
+        : posts.filter(p => !p.isPrivate || p.chatName === user?.chatName));
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col pb-20">
@@ -167,67 +206,83 @@ export default function SocialSplashPage() {
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => filterUser ? router.push('/trading/social-splash') : router.push('/trading')}
+            onClick={() => {
+              if (view === 'analytics') setView('feed');
+              else if (filterUser) router.push('/trading/social-splash');
+              else router.push('/trading');
+            }}
             className="text-white/60"
           >
             <ArrowLeft size={20} />
           </Button>
           <div className="flex flex-col">
             <h1 className="font-headline font-bold text-sm uppercase italic tracking-tighter">
-              {filterUser ? `@${filterUser}'s Threads` : 'Social Splash'}
+              {view === 'analytics' ? 'My Analytics' : filterUser ? `@${filterUser}` : 'Social Splash'}
             </h1>
-            <span className="text-[9px] text-purple-400 font-bold tracking-widest uppercase">VLF-Tec Social Node</span>
+            <span className="text-[9px] text-purple-400 font-bold tracking-widest uppercase">VLF-Tec Node</span>
           </div>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="icon" className="bg-white text-black rounded-full hover:bg-white/90">
-              <Plus size={20} />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-[#161616] border-white/10 text-white max-w-lg rounded-3xl">
-            <DialogHeader>
-              <DialogTitle className="font-headline uppercase italic">New Thread</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <Textarea 
-                placeholder="What's happening on the network?"
-                className="bg-transparent border-none text-lg resize-none focus-visible:ring-0 min-h-[120px] placeholder:text-white/20"
-                value={newPostText}
-                onChange={(e) => setNewPostText(e.target.value)}
-              />
-              <div className="flex items-center gap-2 bg-white/5 p-3 rounded-2xl border border-white/5">
-                <ImageIcon size={18} className="text-white/40" />
-                <Input 
-                  placeholder="Catbox Image URL (Optional)"
-                  className="bg-transparent border-none h-auto py-0 focus-visible:ring-0 text-xs"
-                  value={newPostImageUrl}
-                  onChange={(e) => setNewPostImageUrl(e.target.value)}
-                />
-              </div>
-              <Button 
-                onClick={handleCreatePost} 
-                disabled={!newPostText.trim() || isPosting}
-                className="w-full bg-white text-black rounded-full font-bold uppercase tracking-tight"
-              >
-                {isPosting ? 'Broadcasting...' : 'Post'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          variant="ghost" 
+          onClick={() => setView(view === 'feed' ? 'analytics' : 'feed')}
+          className={`flex items-center gap-2 rounded-full border border-white/5 px-4 ${view === 'analytics' ? 'bg-purple-500/20 text-purple-400' : 'text-white/40'}`}
+        >
+          <BarChart3 size={18} />
+          <span className="text-[10px] uppercase font-bold tracking-widest hidden sm:inline">Analytics</span>
+        </Button>
       </header>
 
-      <main className="flex-1 max-w-xl mx-auto w-full p-4 space-y-4">
+      <main className="flex-1 max-w-xl mx-auto w-full p-4 space-y-6">
+        {/* Top Compose Box */}
+        {view === 'feed' && !filterUser && (
+          <div className="bg-[#111111] border border-white/5 rounded-3xl p-5 space-y-4 shadow-xl">
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5 shrink-0">
+                <User size={20} className="text-white/20" />
+              </div>
+              <div className="flex-1 space-y-3">
+                <Textarea 
+                  placeholder="Broadcast to the network..."
+                  value={newPostText}
+                  onChange={(e) => setNewPostText(e.target.value)}
+                  className="bg-transparent border-none text-[15px] p-0 focus-visible:ring-0 resize-none min-h-[60px] placeholder:text-white/10"
+                />
+                <div className="flex items-center gap-2 bg-white/5 p-2 rounded-xl border border-white/5">
+                  <ImageIcon size={14} className="text-white/20" />
+                  <Input 
+                    placeholder="Image URL (Optional)"
+                    value={newPostImageUrl}
+                    onChange={(e) => setNewPostImageUrl(e.target.value)}
+                    className="bg-transparent border-none h-6 py-0 focus-visible:ring-0 text-[11px] placeholder:text-white/10"
+                  />
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest">
+                    {posts.filter(p => p.chatName === user?.chatName && p.timestamp >= new Date().setHours(0,0,0,0)).length}/5 Daily Limit
+                  </span>
+                  <Button 
+                    onClick={handleCreatePost}
+                    disabled={!newPostText.trim() || isPosting}
+                    className="bg-white text-black hover:bg-white/90 rounded-full px-6 font-bold text-xs uppercase"
+                  >
+                    Broadcast
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {displayedPosts.length === 0 && (
           <div className="text-center py-20">
             <Share2 size={48} className="mx-auto text-white/5 mb-4" />
-            <p className="text-white/20 font-bold uppercase tracking-widest text-xs">The network is quiet.</p>
+            <p className="text-white/20 font-bold uppercase tracking-widest text-xs">No activity detected.</p>
           </div>
         )}
 
         {displayedPosts.map((post) => (
-          <div key={post.id} className="bg-[#111111] border border-white/5 rounded-3xl p-5 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div key={post.id} className={`bg-[#111111] border rounded-3xl p-5 space-y-4 transition-all ${post.isPrivate ? 'border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.05)]' : 'border-white/5'}`}>
             <div className="flex items-center justify-between">
               <button 
                 onClick={() => {
@@ -240,7 +295,10 @@ export default function SocialSplashPage() {
                   <User size={20} className="text-white/40 group-hover:text-purple-400" />
                 </div>
                 <div className="flex flex-col items-start">
-                  <span className="text-sm font-bold hover:underline">@{post.chatName}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold hover:underline">@{post.chatName}</span>
+                    {post.isPrivate && <Lock size={10} className="text-amber-500" />}
+                  </div>
                   <span className="text-[10px] text-white/20">{new Date(post.timestamp).toLocaleDateString()}</span>
                 </div>
               </button>
@@ -252,9 +310,24 @@ export default function SocialSplashPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#161616] border-white/10 text-white">
-                  <DropdownMenuItem onClick={() => handleReport(post)} className="text-destructive">
-                    <Flag className="mr-2 h-4 w-4" /> Report User
-                  </DropdownMenuItem>
+                  {post.chatName === user?.chatName ? (
+                    <>
+                      <DropdownMenuItem onClick={() => setEditingPost({id: post.id, text: post.text})}>
+                        <Edit3 className="mr-2 h-4 w-4" /> Edit Thread
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => togglePrivate(post.id, post.isPrivate || false)}>
+                        {post.isPrivate ? <Globe className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
+                        {post.isPrivate ? 'Make Public' : 'Make Private'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Thread
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <DropdownMenuItem onClick={() => handleReport(post)} className="text-destructive">
+                      <Flag className="mr-2 h-4 w-4" /> Report Violation
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -262,8 +335,8 @@ export default function SocialSplashPage() {
             <div className="space-y-3">
               <p className="text-white/90 text-[15px] leading-relaxed whitespace-pre-wrap">{post.text}</p>
               {post.imageUrl && (
-                <div className="rounded-2xl overflow-hidden border border-white/5">
-                  <img src={post.imageUrl} alt="Post Attachment" className="w-full h-auto object-cover max-h-[400px]" />
+                <div className="rounded-2xl overflow-hidden border border-white/5 bg-black/40">
+                  <img src={post.imageUrl} alt="Attached" className="w-full h-auto object-cover max-h-[400px]" />
                 </div>
               )}
             </div>
@@ -277,10 +350,13 @@ export default function SocialSplashPage() {
                 <span className="text-xs font-bold">{Object.keys(post.likes || {}).length}</span>
               </button>
               
-              <div className="flex items-center gap-1.5 text-white/40">
+              <button 
+                onClick={() => setViewingCommentsFor(post)}
+                className="flex items-center gap-1.5 text-white/40 hover:text-purple-400"
+              >
                 <MessageCircle size={18} />
                 <span className="text-xs font-bold">{Object.keys(post.comments || {}).length}</span>
-              </div>
+              </button>
 
               <div className="flex items-center gap-1.5 text-white/40 ml-auto">
                 <Eye size={18} />
@@ -288,17 +364,33 @@ export default function SocialSplashPage() {
               </div>
             </div>
 
+            {/* Smart Comments - Only show one */}
             <div className="space-y-3 pt-2 border-t border-white/5">
-              {post.comments && Object.entries(post.comments).slice(-3).map(([id, c]) => (
-                <div key={id} className="flex gap-2">
-                  <span className="text-[11px] font-bold text-purple-400">@{c.chatName}</span>
-                  <p className="text-[11px] text-white/60">{c.text}</p>
+              {post.comments && Object.entries(post.comments).length > 0 && (
+                <div 
+                  className="bg-white/5 p-3 rounded-2xl cursor-pointer hover:bg-white/10 transition-colors"
+                  onClick={() => setViewingCommentsFor(post)}
+                >
+                  {(() => {
+                    const lastComment = Object.entries(post.comments).pop()![1];
+                    return (
+                      <div className="flex gap-2 items-start">
+                        <span className="text-[11px] font-bold text-purple-400 shrink-0">@{lastComment.chatName}</span>
+                        <p className="text-[11px] text-white/60 line-clamp-1">{lastComment.text}</p>
+                      </div>
+                    );
+                  })()}
+                  {Object.keys(post.comments).length > 1 && (
+                    <p className="text-[9px] text-white/20 mt-2 font-bold uppercase tracking-widest">
+                      + {Object.keys(post.comments).length - 1} more responses
+                    </p>
+                  )}
                 </div>
-              ))}
+              )}
               
               <div className="flex gap-2 items-center">
                 <Input 
-                  placeholder="Add a comment..." 
+                  placeholder="Respond to thread..." 
                   className="h-8 bg-white/5 border-none text-[11px] rounded-full px-4 focus-visible:ring-purple-500/50"
                   value={commentText[post.id] || ""}
                   onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
@@ -318,8 +410,69 @@ export default function SocialSplashPage() {
         ))}
       </main>
 
-      <footer className="fixed bottom-0 left-0 w-full p-4 text-center bg-black/60 backdrop-blur-lg border-t border-white/5">
-        <p className="text-[9px] text-white/10 uppercase tracking-[0.6em] font-headline">Neural Social Link &bull; SV-12 Pro</p>
+      {/* Full Conversation Dialog */}
+      <Dialog open={!!viewingCommentsFor} onOpenChange={() => setViewingCommentsFor(null)}>
+        <DialogContent className="bg-[#111111] border-white/10 text-white max-w-lg rounded-3xl max-h-[80vh] flex flex-col p-0">
+          <DialogHeader className="p-6 border-b border-white/5">
+            <DialogTitle className="font-headline text-lg italic uppercase tracking-tighter">Neural Thread</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {viewingCommentsFor?.comments ? Object.entries(viewingCommentsFor.comments).map(([id, c]) => (
+              <div key={id} className="flex gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
+                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/5 shrink-0">
+                  <User size={14} className="text-white/20" />
+                </div>
+                <div className="bg-white/5 p-3 rounded-2xl flex-1 border border-white/5">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[11px] font-bold text-purple-400">@{c.chatName}</span>
+                    <span className="text-[9px] text-white/10">{new Date(c.timestamp).toLocaleTimeString()}</span>
+                  </div>
+                  <p className="text-sm text-white/80">{c.text}</p>
+                </div>
+              </div>
+            )) : (
+              <p className="text-center text-white/20 text-xs py-10 uppercase tracking-widest">Quiet conversation...</p>
+            )}
+          </div>
+          <div className="p-6 border-t border-white/5">
+            <div className="flex gap-2">
+              <Input 
+                placeholder="Add to the conversation..."
+                className="bg-white/5 border-none h-11 rounded-2xl focus-visible:ring-purple-500/50"
+                value={commentText[viewingCommentsFor?.id || ""] || ""}
+                onChange={(e) => setCommentText(prev => ({ ...prev, [viewingCommentsFor?.id || ""]: e.target.value }))}
+                onKeyDown={(e) => e.key === 'Enter' && viewingCommentsFor && handleAddComment(viewingCommentsFor.id)}
+              />
+              <Button 
+                onClick={() => viewingCommentsFor && handleAddComment(viewingCommentsFor.id)}
+                className="h-11 w-11 bg-white text-black rounded-2xl"
+              >
+                <Send size={18} />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingPost} onOpenChange={() => setEditingPost(null)}>
+        <DialogContent className="bg-[#161616] border-white/10 text-white max-w-lg rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-headline uppercase italic">Update Thread</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea 
+              className="bg-transparent border-white/10 text-[15px] min-h-[120px] rounded-2xl"
+              value={editingPost?.text || ""}
+              onChange={(e) => setEditingPost(prev => prev ? {...prev, text: e.target.value} : null)}
+            />
+            <Button onClick={handleEditPost} className="w-full bg-white text-black rounded-full font-bold uppercase">Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <footer className="fixed bottom-0 left-0 w-full p-4 text-center bg-black/60 backdrop-blur-lg border-t border-white/5 z-40">
+        <p className="text-[9px] text-white/10 uppercase tracking-[0.6em] font-headline italic">Neural Social Link &bull; SV-12 Pro Node Active</p>
       </footer>
     </div>
   );
