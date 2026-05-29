@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut, Zap, Gamepad2, BrainCircuit, UserCircle, Globe } from 'lucide-react';
+import { LogOut, Zap, Gamepad2, BrainCircuit, UserCircle, Globe, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import {
   Dialog,
@@ -79,10 +79,23 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
           </div>
         </Link>
 
+        {/* Trading Card */}
+        <Link href="/trading" className="block animate-in slide-in-from-bottom-8 duration-600">
+          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-amber-500/10 hover:border-amber-500/40 transition-all group active:scale-95 duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 group-hover:scale-110 transition-transform">
+              <TrendingUp size={32} className="text-amber-400" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xl font-headline font-bold text-white uppercase tracking-tight">Trading</span>
+              <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Finance Node 04</span>
+            </div>
+          </div>
+        </Link>
+
         {/* Account & Service */}
         <Dialog>
           <DialogTrigger asChild>
-            <div className="cursor-pointer bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all group active:scale-95 duration-200 animate-in slide-in-from-bottom-8 duration-600">
+            <div className="cursor-pointer bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all group active:scale-95 duration-200 animate-in slide-in-from-bottom-10 duration-700">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
                 <UserCircle size={32} className="text-purple-400" />
               </div>
