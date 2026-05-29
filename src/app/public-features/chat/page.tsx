@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -47,14 +48,31 @@ export default function PublicChatPage() {
         
         // Listen to the user's specific ban record in /users/
         const userBanRef = ref(db, `users/${found.chatName}/bannedUntil`);
-        onValue(userBanRef, (snapshot) => {
+        const unsubscribeBan = onValue(userBanRef, (snapshot) => {
           if (snapshot.exists()) {
             const bannedUntil = snapshot.val();
-            setIsBlocked(bannedUntil > Date.now());
+            const isActive = bannedUntil > Date.now();
+            setIsBlocked(isActive);
+
+            if (isActive) {
+              toast({
+                variant: "destructive",
+                title: "Policy Violation",
+                description: "Your Account is Banned"
+              });
+              
+              setTimeout(() => {
+                sessionStorage.setItem('pending_ban_info', bannedUntil.toString());
+                sessionStorage.removeItem('splash_session_user');
+                router.push('/');
+              }, 3000);
+            }
           } else {
             setIsBlocked(false);
           }
         });
+
+        return () => unsubscribeBan();
       } catch (e) {
         router.push('/');
       }
@@ -63,7 +81,7 @@ export default function PublicChatPage() {
     fetchSessionUser();
 
     const messagesRef = query(ref(db, 'public_chat'), limitToLast(100));
-    const unsubscribe = onValue(messagesRef, (snapshot) => {
+    const unsubscribeMessages = onValue(messagesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const msgList = Object.entries(data).map(([key, value]: [string, any]) => ({
@@ -75,8 +93,8 @@ export default function PublicChatPage() {
       }
     });
 
-    return () => unsubscribe();
-  }, [router]);
+    return () => unsubscribeMessages();
+  }, [router, toast]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();

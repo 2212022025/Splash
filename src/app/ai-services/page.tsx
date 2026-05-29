@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Zap, Send, ArrowLeft, Bot, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
+import { useToast } from '@/hooks/use-toast';
 
 interface Message {
   type: 'user' | 'ai';
@@ -22,6 +25,42 @@ export default function AIServicesPage() {
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const sessionUser = sessionStorage.getItem('splash_session_user');
+    if (!sessionUser) {
+      router.push('/');
+      return;
+    }
+
+    try {
+      const found = JSON.parse(sessionUser);
+      // Listen for ban status
+      const userBanRef = ref(db, `users/${found.chatName}/bannedUntil`);
+      const unsubscribe = onValue(userBanRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const bannedUntil = snapshot.val();
+          if (bannedUntil > Date.now()) {
+            toast({
+              variant: "destructive",
+              title: "Policy Violation",
+              description: "Your Account is Banned"
+            });
+            
+            setTimeout(() => {
+              sessionStorage.setItem('pending_ban_info', bannedUntil.toString());
+              sessionStorage.removeItem('splash_session_user');
+              router.push('/');
+            }, 3000);
+          }
+        }
+      });
+      return () => unsubscribe();
+    } catch (e) {
+      router.push('/');
+    }
+  }, [router, toast]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

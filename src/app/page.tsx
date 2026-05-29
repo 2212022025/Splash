@@ -32,6 +32,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // Check for pending ban info from other pages (e.g. Chat logout)
+    const pendingBan = sessionStorage.getItem('pending_ban_info');
+    if (pendingBan) {
+      const bannedUntil = parseInt(pendingBan);
+      if (bannedUntil > Date.now()) {
+        checkSuspension(bannedUntil);
+      }
+      sessionStorage.removeItem('pending_ban_info');
+    }
+
     // Restore session if it exists to allow navigation between sub-menus without logout
     const savedUser = sessionStorage.getItem('splash_session_user');
     if (savedUser) {
@@ -53,7 +63,7 @@ export default function Home() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [checkSuspension]);
 
   // Sync remote ban for active user from their profile record
   useEffect(() => {
