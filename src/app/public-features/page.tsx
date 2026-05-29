@@ -17,7 +17,7 @@ export default function PublicFeaturesPage() {
           variant="ghost" 
           size="icon" 
           className="text-white/60 hover:text-white"
-          onClick={() => router.back()}
+          onClick={() => router.push('/')}
         >
           <ArrowLeft size={20} />
         </Button>

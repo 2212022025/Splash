@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -31,8 +32,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Session is NOT restored on refresh/open as requested.
-    // User must log in every time the app is opened or refreshed.
+    // Restore session if it exists to allow navigation between sub-menus without logout
+    const savedUser = sessionStorage.getItem('splash_session_user');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        console.error("Session restore failed");
+      }
+    }
+
     const splashShown = sessionStorage.getItem('splash_shown');
     
     if (splashShown) {
@@ -54,7 +63,6 @@ export default function Home() {
         if (snapshot.exists()) {
           const bannedUntil = snapshot.val();
           if (bannedUntil > Date.now()) {
-            // Show toast sequence for 3 seconds then logout
             toast({
               variant: "destructive",
               title: "Policy Violation",
@@ -62,10 +70,8 @@ export default function Home() {
             });
             
             setTimeout(() => {
-              if (sessionStorage.getItem('splash_session_user')) {
-                sessionStorage.removeItem('splash_session_user');
-                setUser(null);
-              }
+              sessionStorage.removeItem('splash_session_user');
+              setUser(null);
               checkSuspension(bannedUntil);
             }, 3000);
           } else {
@@ -100,7 +106,10 @@ export default function Home() {
           onBannedAttempt={handleLoginAttemptWhileBanned}
         />
       ) : (
-        <Dashboard user={user} onLogout={() => setUser(null)} />
+        <Dashboard user={user} onLogout={() => {
+          sessionStorage.removeItem('splash_session_user');
+          setUser(null);
+        }} />
       )}
 
       <Dialog 
