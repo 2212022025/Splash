@@ -14,6 +14,16 @@ export default function Home() {
   const [suspensionInfo, setSuspensionInfo] = useState<{ active: boolean; remaining: number }>({ active: false, remaining: 0 });
 
   useEffect(() => {
+    // Check for active session in current tab
+    const sessionUser = sessionStorage.getItem('splash_session_user');
+    if (sessionUser) {
+      try {
+        setUser(JSON.parse(sessionUser));
+      } catch (e) {
+        console.error("Session parse failed");
+      }
+    }
+
     const checkSuspension = () => {
       const bannedUntil = localStorage.getItem('splash_banned_until');
       if (bannedUntil) {
@@ -48,17 +58,19 @@ export default function Home() {
   }, []);
 
   const handleLoginSuccess = (userData: { username: string; email: string; chatName: string }) => {
-    // Check suspension one last time before allowing login
     const bannedUntil = localStorage.getItem('splash_banned_until');
     if (bannedUntil && parseInt(bannedUntil) > Date.now()) {
       const remaining = Math.ceil((parseInt(bannedUntil) - Date.now()) / 60000);
       setSuspensionInfo({ active: true, remaining });
       return;
     }
+    // Save to session storage for navigation persistence
+    sessionStorage.setItem('splash_session_user', JSON.stringify(userData));
     setUser(userData);
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem('splash_session_user');
     setUser(null);
   };
 

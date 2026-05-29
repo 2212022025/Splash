@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import { ref, push, onValue, remove, set, query, limitToLast } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, UserX, Clock } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, UserX, Clock, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -39,28 +39,20 @@ export default function PublicChatPage() {
 
   useEffect(() => {
     const fetchSessionUser = async () => {
-      const lastUser = localStorage.getItem('splash_last_username');
-      const lastEmail = localStorage.getItem('splash_last_email');
-      
-      if (!lastUser || !lastEmail) {
+      const sessionUser = sessionStorage.getItem('splash_session_user');
+      if (!sessionUser) {
         router.push('/');
         return;
       }
 
-      const dbRef = ref(db, 'users');
-      onValue(dbRef, (snapshot) => {
-        const users = snapshot.val();
-        if (users) {
-          const found = Object.values(users).find((u: any) => u.username === lastUser && u.email === lastEmail) as any;
-          if (found) {
-            setUser(found);
-            const blockRef = ref(db, `blocked/${found.chatName}`);
-            onValue(blockRef, (s) => setIsBlocked(s.exists()));
-          } else {
-            router.push('/');
-          }
-        }
-      }, { onlyOnce: true });
+      try {
+        const found = JSON.parse(sessionUser);
+        setUser(found);
+        const blockRef = ref(db, `blocked/${found.chatName}`);
+        onValue(blockRef, (s) => setIsBlocked(s.exists()));
+      } catch (e) {
+        router.push('/');
+      }
     };
 
     fetchSessionUser();
@@ -103,13 +95,11 @@ export default function PublicChatPage() {
 
     const lowerText = text.toLowerCase();
     
-    // Check for Hacking/Cheating keywords
     if (BAN_WORDS.some(word => lowerText.includes(word))) {
       handleSuspension(false);
       return;
     }
 
-    // Check for Abusive language
     if (ABUSE_WORDS.some(word => lowerText.includes(word))) {
       handleSuspension(true);
       return;
@@ -149,14 +139,6 @@ export default function PublicChatPage() {
       sender: msg.chatName,
       timestamp: Date.now()
     });
-
-    const lowerText = msg.text.toLowerCase();
-    if (BAN_WORDS.some(word => lowerText.includes(word))) {
-      // If reported message contains hacking keywords, reporter triggered logic? 
-      // Prompt says: "if user enters message Hacking... and reported then user blocked"
-      // This implies the SENDER should be blocked. We handle this on send, 
-      // but let's add logic for reported abusive messages too.
-    }
     
     toast({ title: "Reported", description: "Message sent for review." });
   };
@@ -190,7 +172,8 @@ export default function PublicChatPage() {
       <main className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth">
         {messages.map((msg, idx) => {
           const showDateLine = idx === 0 || formatDate(messages[idx-1].timestamp) !== formatDate(msg.timestamp);
-          
+          const isOwn = msg.chatName === user.chatName;
+
           return (
             <React.Fragment key={msg.id}>
               {showDateLine && (
@@ -202,25 +185,35 @@ export default function PublicChatPage() {
               )}
               
               <div 
-                className={`flex flex-col max-w-[85%] sm:max-w-[70%] ${msg.chatName === user.chatName ? 'ml-auto items-end' : 'items-start'}`}
+                className={`flex flex-col max-w-[85%] sm:max-w-[70%] ${isOwn ? 'ml-auto items-end' : 'items-start'}`}
               >
                 <div className="flex items-center gap-2 mb-1">
+                  {!isOwn && (
+                    <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center border border-white/5">
+                      <User size={10} className="text-white/40" />
+                    </div>
+                  )}
                   <span className={`text-[10px] font-bold uppercase tracking-wider ${msg.isModerator ? 'text-blue-400' : 'text-white/40'}`}>
-                    {msg.chatName}
+                    {msg.chatName.replace('#225', '')}
                   </span>
                   {msg.isModerator && <ShieldCheck size={12} className="text-blue-400 fill-blue-400/20" />}
+                  {isOwn && (
+                    <div className="w-5 h-5 rounded-full bg-primary/30 flex items-center justify-center border border-white/5">
+                      <User size={10} className="text-white/60" />
+                    </div>
+                  )}
                 </div>
 
-                <div className={`flex items-end gap-2 group ${msg.chatName === user.chatName ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`flex items-end gap-2 group ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`px-4 py-2.5 rounded-2xl relative shadow-lg ${
                     msg.isModerator 
                       ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50' 
-                      : msg.chatName === user.chatName 
+                      : isOwn 
                         ? 'bg-primary text-white rounded-tr-none' 
                         : 'bg-white/5 border border-white/10 rounded-tl-none'
                   }`}>
                     <p className="text-sm leading-relaxed break-words">{msg.text}</p>
-                    <div className={`flex items-center gap-1 mt-1 ${msg.chatName === user.chatName ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
                       <Clock size={8} className="text-white/20" />
                       <span className="text-[8px] text-white/30 font-medium">{formatTime(msg.timestamp)}</span>
                     </div>
@@ -232,18 +225,18 @@ export default function PublicChatPage() {
                         <MoreVertical size={12} />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align={msg.chatName === user.chatName ? "end" : "start"} className="bg-[#161616] border-white/10 text-white">
-                      {(msg.chatName === user.chatName || currentUserIsModerator) && (
+                    <DropdownMenuContent align={isOwn ? "end" : "start"} className="bg-[#161616] border-white/10 text-white">
+                      {(isOwn || currentUserIsModerator) && (
                         <DropdownMenuItem onClick={() => handleDeleteMessage(msg.id)} className="text-destructive focus:text-destructive">
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       )}
-                      {msg.chatName !== user.chatName && (
+                      {!isOwn && (
                         <DropdownMenuItem onClick={() => handleReportMessage(msg)}>
                           <Flag className="mr-2 h-4 w-4" /> Report
                         </DropdownMenuItem>
                       )}
-                      {currentUserIsModerator && msg.chatName !== user.chatName && (
+                      {currentUserIsModerator && !isOwn && (
                         <DropdownMenuItem onClick={() => handleBlockUser(msg.chatName)}>
                           <UserX className="mr-2 h-4 w-4" /> Block User
                         </DropdownMenuItem>
