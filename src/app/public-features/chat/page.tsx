@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import { ref, push, onValue, remove, set, query, limitToLast } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, UserX, Clock, User } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, UserX, Clock, User, ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -48,6 +48,8 @@ export default function PublicChatPage() {
       try {
         const found = JSON.parse(sessionUser);
         setUser(found);
+        
+        // Block check from separate blocked node (for chat only)
         const blockRef = ref(db, `blocked/${found.chatName}`);
         onValue(blockRef, (s) => setIsBlocked(s.exists()));
       } catch (e) {
@@ -81,16 +83,16 @@ export default function PublicChatPage() {
     // Save ban directly to user record in Firebase RTDB
     set(ref(db, `users/${user.chatName}/bannedUntil`), bannedUntil);
 
-    if (isAbusive) {
-      toast({ variant: "destructive", title: "Policy Violation", description: "Your Account is Banned" });
-      setTimeout(() => {
-        sessionStorage.removeItem('splash_session_user');
-        window.location.href = "/";
-      }, 3000);
-    } else {
+    toast({ 
+      variant: "destructive", 
+      title: "Policy Violation", 
+      description: "Your Account is Banned" 
+    });
+
+    setTimeout(() => {
       sessionStorage.removeItem('splash_session_user');
       window.location.href = "/";
-    }
+    }, 3000);
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -151,6 +153,11 @@ export default function PublicChatPage() {
   const handleBlockUser = (chatName: string) => {
     set(ref(db, `blocked/${chatName}`), true);
     toast({ title: "User Blocked", description: `${chatName} can no longer chat.` });
+  };
+
+  const handleUnbanUser = (chatName: string) => {
+    set(ref(db, `users/${chatName}/bannedUntil`), null);
+    toast({ title: "User Restored", description: `${chatName} has been unbanned.` });
   };
 
   if (!user) return null;
@@ -242,9 +249,14 @@ export default function PublicChatPage() {
                         </DropdownMenuItem>
                       )}
                       {currentUserIsModerator && !isOwn && (
-                        <DropdownMenuItem onClick={() => handleBlockUser(msg.chatName)}>
-                          <UserX className="mr-2 h-4 w-4" /> Block User
-                        </DropdownMenuItem>
+                        <>
+                          <DropdownMenuItem onClick={() => handleBlockUser(msg.chatName)}>
+                            <UserX className="mr-2 h-4 w-4" /> Block User
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUnbanUser(msg.chatName)} className="text-emerald-400 focus:text-emerald-400">
+                            <ShieldAlert className="mr-2 h-4 w-4" /> Unban Account
+                          </DropdownMenuItem>
+                        </>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
