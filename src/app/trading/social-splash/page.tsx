@@ -27,7 +27,10 @@ import {
   Moon,
   BadgeCheck,
   Banknote,
-  Copy
+  Copy,
+  Wallet,
+  Landmark,
+  ShieldCheck
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +44,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from '@/lib/utils';
 
 const ABUSE_WORDS = ["fuck", "bitch", "chutiya", "mc", "bc", "gandu", "madarchod", "fake"];
+const MONETIZATION_THRESHOLD = 1000;
+const TAX_RATE = 0.33;
 
 interface SocialPost {
   id: string;
@@ -67,6 +72,12 @@ export default function SocialSplashPage() {
   const [isWhiteTheme, setIsWhiteTheme] = useState(false);
   const [reportedPosts, setReportedPosts] = useState<string[]>([]);
   
+  // Monetization & Wallet States
+  const [isWalletOpen, setIsWalletOpen] = useState(false);
+  const [totalWithdrawn, setTotalWithdrawn] = useState(0);
+  const [withdrawalAmount, setWithdrawalAmount] = useState("");
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -91,10 +102,12 @@ export default function SocialSplashPage() {
       router.push('/');
       return;
     }
-    setUser(JSON.parse(sessionUser));
+    const foundUser = JSON.parse(sessionUser);
+    setUser(foundUser);
 
+    // Fetch Posts
     const postsRef = query(ref(db, 'social_posts'), limitToLast(100));
-    const unsubscribe = onValue(postsRef, (snapshot) => {
+    const unsubscribePosts = onValue(postsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const list = Object.entries(data).map(([key, value]: [string, any]) => ({
@@ -107,17 +120,40 @@ export default function SocialSplashPage() {
       }
     });
 
-    return () => unsubscribe();
+    // Fetch Withdrawals for User
+    const withdrawalsRef = ref(db, `social_withdrawals/${foundUser.chatName}`);
+    const unsubscribeWithdrawals = onValue(withdrawalsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const total = Object.values(data).reduce((acc: number, curr: any) => acc + (curr.amount || 0), 0);
+        setTotalWithdrawn(total);
+      } else {
+        setTotalWithdrawn(0);
+      }
+    });
+
+    return () => {
+      unsubscribePosts();
+      unsubscribeWithdrawals();
+    };
   }, [router]);
 
-  // Calculate user stats for blue tick
+  // Calculate user stats for blue tick & monetization
   const userStats = useMemo(() => {
-    const stats: Record<string, number> = {};
+    const stats: Record<string, { views: number; potentialEarnings: number }> = {};
     posts.forEach(p => {
-      stats[p.chatName] = (stats[p.chatName] || 0) + (p.views || 0);
+      if (!stats[p.chatName]) stats[p.chatName] = { views: 0, potentialEarnings: 0 };
+      stats[p.chatName].views += (p.views || 0);
+      // Earnings calculation
+      const earnings = p.imageUrl ? 12.5 : 8;
+      stats[p.chatName].potentialEarnings += earnings;
     });
     return stats;
   }, [posts]);
+
+  const currentUserStats = user ? (userStats[user.chatName] || { views: 0, potentialEarnings: 0 }) : { views: 0, potentialEarnings: 0 };
+  const isCurrentUserVerified = currentUserStats.views >= MONETIZATION_THRESHOLD;
+  const currentBalance = isCurrentUserVerified ? (currentUserStats.potentialEarnings - totalWithdrawn) : 0;
 
   const handleCreatePost = () => {
     if (!newPostText.trim() || !user) return;
@@ -149,6 +185,43 @@ export default function SocialSplashPage() {
     setNewPostImageUrl("");
     setIsPosting(false);
     toast({ title: "Broadcast Successful", description: "Thread indexed on the Splash network." });
+  };
+
+  const handleWithdrawal = () => {
+    const amount = parseFloat(withdrawalAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({ variant: "destructive", title: "Invalid Amount", description: "Please enter a valid numeric value." });
+      return;
+    }
+
+    if (amount > currentBalance) {
+      toast({ variant: "destructive", title: "Insufficient Funds", description: "Your balance is lower than the requested amount." });
+      return;
+    }
+
+    setIsWithdrawing(true);
+    const withdrawalRef = ref(db, `social_withdrawals/${user.chatName}`);
+    const tax = amount * TAX_RATE;
+    const finalAmount = amount - tax;
+
+    push(withdrawalRef, {
+      amount: amount,
+      taxApplied: tax,
+      finalReceived: finalAmount,
+      timestamp: Date.now(),
+      status: 'processed'
+    }).then(() => {
+      toast({ 
+        title: "Withdrawal Successful", 
+        description: `Requested ${amount}rs. Received ${finalAmount.toFixed(2)}rs after 33% Network Tax.` 
+      });
+      setWithdrawalAmount("");
+      setIsWithdrawing(false);
+      setIsWalletOpen(false);
+    }).catch(() => {
+      setIsWithdrawing(false);
+      toast({ variant: "destructive", title: "Network Error", description: "Failed to process withdrawal." });
+    });
   };
 
   const handleEditPost = () => {
@@ -262,7 +335,16 @@ export default function SocialSplashPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsWalletOpen(true)}
+            className={cn("rounded-full", isCurrentUserVerified ? "text-emerald-400" : mutedText)}
+          >
+            <Banknote size={18} />
+          </Button>
+
           <Button
             variant="ghost"
             size="icon"
@@ -275,7 +357,7 @@ export default function SocialSplashPage() {
           <Button 
             variant="ghost" 
             onClick={() => setView(view === 'feed' ? 'analytics' : 'feed')}
-            className={cn("flex items-center gap-2 rounded-full border px-4", 
+            className={cn("flex items-center gap-2 rounded-full border px-4 h-9", 
               isWhiteTheme ? "border-gray-200" : "border-white/5",
               view === 'analytics' ? 'bg-purple-500/20 text-purple-400' : mutedText
             )}
@@ -288,7 +370,10 @@ export default function SocialSplashPage() {
 
       <main className="flex-1 max-w-xl mx-auto w-full p-4 space-y-6">
         {view === 'feed' && !filterUser && (
-          <div className={cn("border rounded-3xl p-5 space-y-4 shadow-sm", cardBg)}>
+          <div className={cn("border border-dashed rounded-3xl p-5 space-y-4 shadow-sm", 
+            cardBg,
+            isWhiteTheme ? "border-black/20" : "border-white/10"
+          )}>
             <div className="flex gap-4">
               <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border shrink-0", 
                 isWhiteTheme ? "bg-gray-100 border-gray-200" : "bg-white/5 border-white/5"
@@ -301,8 +386,8 @@ export default function SocialSplashPage() {
                   value={newPostText}
                   onChange={(e) => setNewPostText(e.target.value)}
                   className={cn(
-                    "bg-transparent border-dotted border-2 text-[15px] p-3 focus-visible:ring-0 resize-none min-h-[80px] placeholder:text-gray-400 rounded-xl",
-                    isWhiteTheme ? "border-black/20" : "border-white/10"
+                    "bg-transparent border-none text-[15px] p-0 focus-visible:ring-0 resize-none min-h-[80px] placeholder:text-gray-400",
+                    textColor
                   )}
                 />
                 <div className={cn("flex items-center gap-2 p-2 rounded-xl border", 
@@ -343,8 +428,8 @@ export default function SocialSplashPage() {
         )}
 
         {displayedPosts.map((post) => {
-          const totalUserViews = userStats[post.chatName] || 0;
-          const isVerified = totalUserViews >= 1000;
+          const authorStats = userStats[post.chatName] || { views: 0, potentialEarnings: 0 };
+          const isVerified = authorStats.views >= MONETIZATION_THRESHOLD;
           const isReported = reportedPosts.includes(post.id);
 
           return (
@@ -514,6 +599,83 @@ export default function SocialSplashPage() {
           );
         })}
       </main>
+
+      {/* Wallet Dialog */}
+      <Dialog open={isWalletOpen} onOpenChange={setIsWalletOpen}>
+        <DialogContent className={cn("max-w-sm rounded-3xl", 
+          isWhiteTheme ? "bg-white text-black" : "bg-[#161616] border-white/10 text-white"
+        )}>
+          <DialogHeader className="flex flex-col items-center gap-2">
+            <div className={cn("w-16 h-16 rounded-full flex items-center justify-center border", 
+              isCurrentUserVerified ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500" : "bg-white/5 border-white/10 text-white/30"
+            )}>
+              <Wallet size={32} />
+            </div>
+            <DialogTitle className="font-headline uppercase italic text-xl">Splash Wallet</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {!isCurrentUserVerified ? (
+              <div className="bg-amber-500/10 border border-amber-500/20 p-5 rounded-2xl text-center space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Monetization Status</p>
+                <div className="flex flex-col items-center">
+                  <span className="text-3xl font-black">{MONETIZATION_THRESHOLD - currentUserStats.views}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-tighter text-amber-500/60">Views Left to Monetization</span>
+                </div>
+                <div className="w-full bg-amber-500/20 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-amber-500 h-full transition-all duration-1000" 
+                    style={{ width: `${(currentUserStats.views / MONETIZATION_THRESHOLD) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 mb-2">Available Balance</p>
+                  <span className="text-4xl font-black text-white">{currentBalance.toFixed(2)} <span className="text-sm font-bold opacity-40">rs</span></span>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Input 
+                      placeholder="Withdrawal Amount"
+                      type="number"
+                      value={withdrawalAmount}
+                      onChange={(e) => setWithdrawalAmount(e.target.value)}
+                      className={cn("rounded-xl h-12 border-none focus-visible:ring-emerald-500/50", 
+                        isWhiteTheme ? "bg-gray-100" : "bg-white/5"
+                      )}
+                    />
+                    <Button 
+                      onClick={handleWithdrawal}
+                      disabled={isWithdrawing || !withdrawalAmount}
+                      className="h-12 bg-emerald-500 hover:bg-emerald-600 text-black font-bold uppercase px-6 rounded-xl"
+                    >
+                      {isWithdrawing ? "..." : "Withdraw"}
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 px-2">
+                    <ShieldCheck size={12} className="text-emerald-500/40" />
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-white/30">33% Network Tax will be applied</p>
+                  </div>
+                </div>
+
+                <div className={cn("p-4 rounded-xl border flex justify-between items-center", 
+                  isWhiteTheme ? "bg-gray-50 border-gray-100" : "bg-white/5 border-white/5"
+                )}>
+                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">Total Lifetime Earnings</span>
+                  <span className="text-sm font-bold">{currentUserStats.potentialEarnings.toFixed(2)} rs</span>
+                </div>
+              </div>
+            )}
+            
+            <Button variant="ghost" className="w-full text-[10px] uppercase font-bold tracking-widest opacity-40" onClick={() => setIsWalletOpen(false)}>
+              Close Terminal
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!viewingCommentsFor} onOpenChange={() => setViewingCommentsFor(null)}>
         <DialogContent className={cn("max-w-lg rounded-3xl max-h-[80vh] flex flex-col p-0 overflow-hidden", 
