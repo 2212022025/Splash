@@ -72,6 +72,19 @@ export default function SocialSplashPage() {
   const { toast } = useToast();
   const filterUser = searchParams.get('user');
 
+  // Load theme preference
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('social_splash_theme');
+    if (savedTheme === 'white') setIsWhiteTheme(true);
+  }, []);
+
+  // Save theme preference
+  const toggleTheme = () => {
+    const nextTheme = !isWhiteTheme;
+    setIsWhiteTheme(nextTheme);
+    localStorage.setItem('social_splash_theme', nextTheme ? 'white' : 'dark');
+  };
+
   useEffect(() => {
     const sessionUser = sessionStorage.getItem('splash_session_user');
     if (!sessionUser) {
@@ -253,7 +266,7 @@ export default function SocialSplashPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsWhiteTheme(!isWhiteTheme)}
+            onClick={toggleTheme}
             className={cn("rounded-full", mutedText)}
           >
             {isWhiteTheme ? <Moon size={18} /> : <Sun size={18} />}
@@ -287,7 +300,10 @@ export default function SocialSplashPage() {
                   placeholder="Add Your Threads"
                   value={newPostText}
                   onChange={(e) => setNewPostText(e.target.value)}
-                  className="bg-transparent border-dotted border-2 border-white/10 text-[15px] p-3 focus-visible:ring-0 resize-none min-h-[80px] placeholder:text-gray-400 rounded-xl"
+                  className={cn(
+                    "bg-transparent border-dotted border-2 text-[15px] p-3 focus-visible:ring-0 resize-none min-h-[80px] placeholder:text-gray-400 rounded-xl",
+                    isWhiteTheme ? "border-black/20" : "border-white/10"
+                  )}
                 />
                 <div className={cn("flex items-center gap-2 p-2 rounded-xl border", 
                   isWhiteTheme ? "bg-white border-gray-200" : "bg-white/5 border-white/5"
@@ -587,4 +603,3 @@ export default function SocialSplashPage() {
     </div>
   );
 }
-

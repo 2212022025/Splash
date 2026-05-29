@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, BadgeCheck, Share2, Clock } from 'lucide-react';
+import { ArrowLeft, User, BadgeCheck, Share2, Clock, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SocialPost {
@@ -132,4 +132,3 @@ export default function PostSharePage() {
     </div>
   );
 }
-
