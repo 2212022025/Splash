@@ -3,13 +3,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, get, set, child } from 'firebase/database';
+import { ref, get, child } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, MessageSquare, PlusCircle, LogIn } from 'lucide-react';
+import { User, Mail, MessageSquare, PlusCircle, LogIn, AlertCircle } from 'lucide-react';
+import { set, ref as rtdbRef } from 'firebase/database';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: { username: string; email: string; chatName: string }) => void;
@@ -53,10 +54,10 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           localStorage.setItem('splash_last_email', email);
           onLoginSuccess(foundUser);
         } else {
-          toast({ variant: "destructive", title: "Login Failed", description: "Invalid Credentials" });
+          toast({ variant: "destructive", title: "Invalid Credentials", description: "Username or Email is incorrect." });
         }
       } else {
-        toast({ variant: "destructive", title: "Login Failed", description: "Invalid Credentials" });
+        toast({ variant: "destructive", title: "Invalid Credentials", description: "No users found in database." });
       }
     } catch (error) {
       toast({ variant: "destructive", title: "System Error", description: "Database communication failure." });
@@ -92,7 +93,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
     setIsLoading(true);
     try {
-      const userRef = ref(db, `users/${chatName}`);
+      const userRef = rtdbRef(db, `users/${chatName}`);
       const checkSnapshot = await get(userRef);
       
       if (checkSnapshot.exists()) {
@@ -117,8 +118,6 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#121212]">
-      <div className="absolute top-0 left-0 w-full h-1 bg-primary/20"></div>
-      
       <Card className="w-full max-w-md bg-[#1a1a1a] border-white/5 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-1 h-full bg-accent neon-glow"></div>
         <CardHeader className="text-center pt-10">
@@ -126,7 +125,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
             {isLogin ? 'Login to Splash' : 'Join Splash'}
           </CardTitle>
           <CardDescription className="font-body text-white/50">
-            {isLogin ? 'Enter your credentials to continue' : 'Create your unique digital identity'}
+            {isLogin ? 'Enter credentials' : 'Create identity'}
           </CardDescription>
         </CardHeader>
         
@@ -140,27 +139,27 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ex: TechnoBlade"
+                placeholder="Username"
                 className="bg-[#121212] border-white/10 text-white placeholder:text-white/20 focus:ring-accent"
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-xs uppercase tracking-widest text-accent font-semibold flex items-center gap-2">
-                <Mail size={14} className="text-accent" /> Email ID
+                <Mail size={14} className="text-accent" /> Email
               </Label>
               <Input 
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@provider.com"
+                placeholder="Email"
                 className="bg-[#121212] border-white/10 text-white placeholder:text-white/20 focus:ring-accent"
               />
             </div>
 
             {!isLogin && (
-              <div className="space-y-2 animate-in slide-in-from-top-4 duration-300">
+              <div className="space-y-2">
                 <Label htmlFor="chatName" className="text-xs uppercase tracking-widest text-accent font-semibold flex items-center gap-2">
                   <MessageSquare size={14} className="text-accent" /> Chat Name
                 </Label>
@@ -168,7 +167,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
                   id="chatName"
                   value={chatName}
                   onChange={(e) => setChatName(e.target.value)}
-                  placeholder="TheRealWizard (No @ allowed)"
+                  placeholder="Chat Name"
                   className="bg-[#121212] border-white/10 text-white placeholder:text-white/20 focus:ring-accent"
                 />
               </div>
@@ -176,29 +175,23 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
             <Button 
               type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-white h-12 rounded-lg font-headline tracking-widest uppercase text-sm mt-4 transition-all duration-300 active:scale-[0.98]"
+              className="w-full bg-primary hover:bg-primary/90 text-white h-12 rounded-lg font-headline tracking-widest uppercase text-sm mt-4 transition-all duration-300"
               disabled={isLoading}
             >
-              {isLoading ? 'Processing...' : (isLogin ? 'Initialize Session' : 'Create Account')}
+              {isLoading ? 'Processing...' : (isLogin ? 'Login' : 'Signup')}
             </Button>
           </form>
         </CardContent>
 
         <CardFooter className="flex flex-col gap-4 pb-8">
-          <div className="flex items-center gap-4 w-full">
-            <div className="h-px bg-white/5 flex-1"></div>
-            <span className="text-xs text-white/30 uppercase tracking-widest">or</span>
-            <div className="h-px bg-white/5 flex-1"></div>
-          </div>
-          
           <button 
             onClick={() => setIsLogin(!isLogin)}
             className="text-sm text-accent/80 hover:text-accent font-medium transition-colors flex items-center gap-2"
           >
             {isLogin ? (
-              <><PlusCircle size={16} /> Create New Account</>
+              <><PlusCircle size={16} /> New Account</>
             ) : (
-              <><LogIn size={16} /> Already have an account?</>
+              <><LogIn size={16} /> Have account?</>
             )}
           </button>
         </CardFooter>
