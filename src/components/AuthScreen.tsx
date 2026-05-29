@@ -13,9 +13,10 @@ import { User, Mail, MessageSquare, PlusCircle, LogIn, Zap } from 'lucide-react'
 
 interface AuthScreenProps {
   onLoginSuccess: (user: { username: string; email: string; chatName: string }) => void;
+  onBannedAttempt: () => void;
 }
 
-export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
+export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -41,6 +42,7 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         title: "Account Banned", 
         description: "Your account is currently suspended from the network." 
       });
+      onBannedAttempt();
       return;
     }
 
@@ -103,7 +105,6 @@ export function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         localStorage.setItem('splash_last_username', username);
         localStorage.setItem('splash_last_email', email);
         
-        toast({ title: "Account Created", description: "Welcome to Splash." });
         onLoginSuccess(newUser);
       }
     } catch (error) {
