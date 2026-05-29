@@ -28,12 +28,13 @@ export default function PostSharePage() {
   const [totalUserViews, setTotalUserViews] = useState(0);
 
   const getDisplayedViews = (p: SocialPost) => {
-    if (!p.targetViews || !p.timestamp) return p.views || 0;
+    const baseViews = p.views || 0;
+    if (!p.targetViews || !p.timestamp) return baseViews;
     const elapsed = Date.now() - p.timestamp;
     const duration = p.growthDuration || 86400000;
-    if (elapsed >= duration) return p.targetViews + (p.views || 0);
+    if (elapsed >= duration) return baseViews + p.targetViews;
     const progress = elapsed / duration;
-    return Math.floor(p.targetViews * progress) + (p.views || 0);
+    return baseViews + Math.floor(p.targetViews * progress);
   };
 
   useEffect(() => {

@@ -31,7 +31,9 @@ import {
   Wallet,
   Landmark,
   ShieldCheck,
-  Star
+  Star,
+  History,
+  Clock
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -47,6 +49,7 @@ import { cn } from '@/lib/utils';
 const ABUSE_WORDS = ["fuck", "bitch", "chutiya", "mc", "bc", "gandu", "madarchod", "fake"];
 const MONETIZATION_THRESHOLD = 1000;
 const TAX_RATE = 0.33;
+const MIN_WITHDRAWAL = 20;
 
 interface SocialPost {
   id: string;
@@ -58,10 +61,18 @@ interface SocialPost {
   views: number;
   comments?: Record<string, { chatName: string; text: string; timestamp: number }>;
   isPrivate?: boolean;
-  // Algorithmic Growth Fields
   targetViews?: number;
   targetLikesCount?: number;
-  growthDuration?: number; // in ms
+  growthDuration?: number;
+}
+
+interface WithdrawalRecord {
+  id: string;
+  amount: number;
+  taxApplied: number;
+  finalReceived: number;
+  timestamp: number;
+  status: string;
 }
 
 export default function SocialSplashPage() {
@@ -76,9 +87,11 @@ export default function SocialSplashPage() {
   const [editingPost, setEditingPost] = useState<{id: string, text: string} | null>(null);
   const [isWhiteTheme, setIsWhiteTheme] = useState(false);
   const [reportedPosts, setReportedPosts] = useState<string[]>([]);
+  const [tick, setTick] = useState(0);
   
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [totalWithdrawn, setTotalWithdrawn] = useState(0);
+  const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalRecord[]>([]);
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
@@ -87,9 +100,16 @@ export default function SocialSplashPage() {
   const { toast } = useToast();
   const filterUser = searchParams.get('user');
 
+  // Load theme from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('social_splash_theme');
     if (savedTheme === 'white') setIsWhiteTheme(true);
+  }, []);
+
+  // Update tick for live view growth
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const toggleTheme = () => {
@@ -125,10 +145,17 @@ export default function SocialSplashPage() {
     const unsubscribeWithdrawals = onValue(withdrawalsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const total = Object.values(data).reduce((acc: number, curr: any) => acc + (curr.amount || 0), 0);
+        const history: WithdrawalRecord[] = Object.entries(data).map(([id, val]: [string, any]) => ({
+          id,
+          ...val
+        })).sort((a, b) => b.timestamp - a.timestamp);
+        
+        const total = history.reduce((acc, curr) => acc + (curr.amount || 0), 0);
         setTotalWithdrawn(total);
+        setWithdrawalHistory(history);
       } else {
         setTotalWithdrawn(0);
+        setWithdrawalHistory([]);
       }
     });
 
@@ -139,12 +166,13 @@ export default function SocialSplashPage() {
   }, [router]);
 
   const getDisplayedViews = (post: SocialPost) => {
-    if (!post.targetViews || !post.timestamp) return post.views || 0;
+    const baseViews = post.views || 0;
+    if (!post.targetViews || !post.timestamp) return baseViews;
     const elapsed = Date.now() - post.timestamp;
     const duration = post.growthDuration || 86400000;
-    if (elapsed >= duration) return post.targetViews + (post.views || 0);
+    if (elapsed >= duration) return baseViews + post.targetViews;
     const progress = elapsed / duration;
-    return Math.floor(post.targetViews * progress) + (post.views || 0);
+    return baseViews + Math.floor(post.targetViews * progress);
   };
 
   const getDisplayedLikes = (post: SocialPost) => {
@@ -152,9 +180,9 @@ export default function SocialSplashPage() {
     if (!post.targetLikesCount || !post.timestamp) return realLikes;
     const elapsed = Date.now() - post.timestamp;
     const duration = post.growthDuration || 86400000;
-    if (elapsed >= duration) return post.targetLikesCount + realLikes;
+    if (elapsed >= duration) return realLikes + post.targetLikesCount;
     const progress = elapsed / duration;
-    return Math.floor(post.targetLikesCount * progress) + realLikes;
+    return realLikes + Math.floor(post.targetLikesCount * progress);
   };
 
   const userStats = useMemo(() => {
@@ -167,7 +195,7 @@ export default function SocialSplashPage() {
       stats[p.chatName].potentialEarnings += earnings;
     });
     return stats;
-  }, [posts]);
+  }, [posts, tick]); // Recalculate on every tick
 
   const currentUserStats = user ? (userStats[user.chatName] || { views: 0, potentialEarnings: 0 }) : { views: 0, potentialEarnings: 0 };
   const isCurrentUserVerified = currentUserStats.views >= MONETIZATION_THRESHOLD;
@@ -218,13 +246,20 @@ export default function SocialSplashPage() {
     setNewPostText("");
     setNewPostImageUrl("");
     setIsPosting(false);
-    toast({ title: "Broadcast Successful", description: "Thread indexed on the Splash network." });
+    toast({ title: "Thread Shared", description: "Successfully indexed on the network." });
   };
 
   const handleWithdrawal = () => {
     const amount = parseFloat(withdrawalAmount);
     if (isNaN(amount) || amount <= 0) return;
-    if (amount > currentBalance) return;
+    if (amount > currentBalance) {
+      toast({ variant: "destructive", title: "Insufficient Funds", description: "Withdrawal exceeds available balance." });
+      return;
+    }
+    if (amount < MIN_WITHDRAWAL) {
+      toast({ variant: "destructive", title: "Minimum Amount", description: `Minimum withdrawal is ${MIN_WITHDRAWAL} rs.` });
+      return;
+    }
 
     setIsWithdrawing(true);
     const withdrawalRef = ref(db, `social_withdrawals/${user.chatName}`);
@@ -240,11 +275,10 @@ export default function SocialSplashPage() {
     }).then(() => {
       toast({ 
         title: "Withdrawal Successful", 
-        description: `Requested ${amount}rs. Received ${finalAmount.toFixed(2)}rs after 33% Network Tax.` 
+        description: `Requested ${amount}rs. Received ${finalAmount.toFixed(2)}rs after 33% tax.` 
       });
       setWithdrawalAmount("");
       setIsWithdrawing(false);
-      setIsWalletOpen(false);
     });
   };
 
@@ -308,7 +342,7 @@ export default function SocialSplashPage() {
   const handleShare = (postId: string) => {
     const shareUrl = `${window.location.origin}/trading/social-splash/share/${postId}`;
     navigator.clipboard.writeText(shareUrl);
-    toast({ title: "Link Copied" });
+    toast({ title: "Link Copied", description: "Neural share link ready for distribution." });
   };
 
   const incrementView = (postId: string) => {
@@ -365,7 +399,7 @@ export default function SocialSplashPage() {
 
       <main className="flex-1 max-w-xl mx-auto w-full p-4 space-y-6">
         {view === 'feed' && !filterUser && (
-          <div className={cn("border border-dashed rounded-3xl p-5 space-y-4 shadow-sm", cardBg, isWhiteTheme ? "border-black/20" : "border-white/10")}>
+          <div className={cn("border border-dashed rounded-3xl p-5 space-y-4 shadow-sm", cardBg, isWhiteTheme ? "border-black/40" : "border-white/10")}>
             <div className="flex gap-4">
               <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border shrink-0", isWhiteTheme ? "bg-gray-100 border-gray-200" : "bg-white/5 border-white/5")}>
                 <User size={20} className={ghostText} />
@@ -402,7 +436,7 @@ export default function SocialSplashPage() {
           const currentLikes = getDisplayedLikes(post);
 
           return (
-            <div key={post.id} className={cn("border rounded-3xl p-5 space-y-4 shadow-sm", cardBg, post.isPrivate && 'border-amber-500/20')}>
+            <div key={post.id} className={cn("border rounded-3xl p-5 space-y-4 shadow-sm transition-all", cardBg, post.isPrivate && 'border-amber-500/20')}>
               <div className="flex items-center justify-between">
                 <button onClick={() => { incrementView(post.id); router.push(`/trading/social-splash?user=${post.chatName}`); }} className="flex items-center gap-2 group">
                   <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border transition-colors", isWhiteTheme ? "bg-gray-100 border-gray-200" : "bg-white/5 border-white/5")}>
@@ -471,14 +505,15 @@ export default function SocialSplashPage() {
               {isVerified && post.chatName === user?.chatName && (
                 <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
                   <Banknote size={16} className="text-emerald-500" />
-                  <span className="text-[10px] text-emerald-500 font-bold uppercase">Earning Started: {post.imageUrl ? '12.5rs' : '8rs'}</span>
+                  <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-tight">Earnings Active: {post.imageUrl ? '12.5rs' : '8rs'}</span>
                 </div>
               )}
 
               {post.comments && Object.entries(post.comments).length > 0 && (
                 <div className={cn("p-3 rounded-2xl border cursor-pointer", isWhiteTheme ? "bg-white border-gray-100" : "bg-white/5 border-white/5")} onClick={() => setViewingCommentsFor(post)}>
                   {(() => {
-                    const [id, lastComment] = Object.entries(post.comments).pop()!;
+                    const entries = Object.entries(post.comments);
+                    const [id, lastComment] = entries[entries.length - 1];
                     return (
                       <div className="flex justify-between items-start">
                         <div className="flex gap-2">
@@ -495,67 +530,116 @@ export default function SocialSplashPage() {
         })}
       </main>
 
-      {/* Dialogs */}
+      {/* Wallet Dialog */}
       <Dialog open={isWalletOpen} onOpenChange={setIsWalletOpen}>
-        <DialogContent className={cn("max-w-sm rounded-3xl", isWhiteTheme ? "bg-white text-black" : "bg-[#161616] border-white/10 text-white")}>
-          <DialogHeader className="flex flex-col items-center gap-2">
-            <div className={cn("w-16 h-16 rounded-full flex items-center justify-center border", isCurrentUserVerified ? "text-emerald-500" : "text-white/30")}>
+        <DialogContent className={cn("max-w-lg rounded-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden", isWhiteTheme ? "bg-white text-black" : "bg-[#161616] border-white/10 text-white")}>
+          <DialogHeader className="p-6 border-b border-white/5 flex flex-col items-center gap-2">
+            <div className={cn("w-16 h-16 rounded-full flex items-center justify-center border", isCurrentUserVerified ? "text-emerald-500 border-emerald-500/20" : "text-white/30 border-white/5")}>
               <Wallet size={32} />
             </div>
-            <DialogTitle className="font-headline uppercase italic">Splash Wallet</DialogTitle>
+            <DialogTitle className="font-headline uppercase italic tracking-tight">Splash Wallet</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
+          
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {!isCurrentUserVerified ? (
-              <div className="bg-amber-500/10 p-5 rounded-2xl text-center space-y-2">
-                <span className="text-3xl font-black">{Math.max(0, MONETIZATION_THRESHOLD - currentUserStats.views)}</span>
-                <p className="text-[11px] font-bold uppercase opacity-60">Views Left to Monetization</p>
+              <div className="bg-amber-500/10 p-8 rounded-3xl text-center space-y-4 border border-amber-500/20">
+                <span className="text-5xl font-black block">{Math.max(0, MONETIZATION_THRESHOLD - Math.floor(currentUserStats.views))}</span>
+                <p className="text-[11px] font-bold uppercase opacity-60 tracking-[0.2em]">Views Left to Monetization</p>
+                <p className="text-xs text-amber-500/60 leading-relaxed">Reach 1,000 combined thread views to unlock the neural payout network.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="bg-emerald-500/10 p-6 rounded-2xl text-center">
-                  <p className="text-[10px] uppercase text-emerald-500 mb-1">Available Balance</p>
-                  <span className="text-4xl font-black">{currentBalance.toFixed(2)} rs</span>
+              <div className="space-y-6">
+                <div className="bg-emerald-500/10 p-8 rounded-3xl text-center border border-emerald-500/20">
+                  <p className="text-[10px] uppercase text-emerald-500 mb-2 font-bold tracking-widest">Available Balance</p>
+                  <span className="text-5xl font-black block">{currentBalance.toFixed(2)} rs</span>
+                  <p className="text-[10px] opacity-40 uppercase mt-4 font-bold">Minimum Withdrawal: {MIN_WITHDRAWAL} rs</p>
                 </div>
-                <div className="flex gap-2">
-                  <Input placeholder="Amount" type="number" value={withdrawalAmount} onChange={(e) => setWithdrawalAmount(e.target.value)} className={cn("rounded-xl h-11 border-none", isWhiteTheme ? "bg-gray-100" : "bg-white/5")} />
-                  <Button onClick={handleWithdrawal} disabled={isWithdrawing} className="h-11 bg-emerald-500 text-black font-bold uppercase px-6 rounded-xl">Withdraw</Button>
+                
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Enter amount" 
+                      type="number" 
+                      value={withdrawalAmount} 
+                      onChange={(e) => setWithdrawalAmount(e.target.value)} 
+                      className={cn("rounded-2xl h-12 border-none px-6 text-lg", isWhiteTheme ? "bg-gray-100" : "bg-white/5")} 
+                    />
+                    <Button 
+                      onClick={handleWithdrawal} 
+                      disabled={isWithdrawing || !withdrawalAmount || parseFloat(withdrawalAmount) < MIN_WITHDRAWAL} 
+                      className="h-12 bg-emerald-500 text-black font-bold uppercase px-8 rounded-2xl hover:bg-emerald-400"
+                    >
+                      {isWithdrawing ? 'Processing' : 'Withdraw'}
+                    </Button>
+                  </div>
+                  <p className="text-[9px] text-center opacity-40 uppercase tracking-widest">33% Network Tax Applied to all transactions</p>
                 </div>
-                <p className="text-[9px] text-center opacity-40 uppercase">33% Network Tax Applied</p>
+
+                {withdrawalHistory.length > 0 && (
+                  <div className="space-y-4 pt-4">
+                    <h3 className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 opacity-60">
+                      <History size={14} /> Withdrawal History
+                    </h3>
+                    <div className="space-y-2">
+                      {withdrawalHistory.map((w) => (
+                        <div key={w.id} className={cn("p-4 rounded-2xl border flex items-center justify-between", isWhiteTheme ? "bg-gray-50 border-gray-100" : "bg-white/5 border-white/5")}>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold">{w.amount} rs</span>
+                            <span className="text-[9px] opacity-40 uppercase font-bold">{new Date(w.timestamp).toLocaleDateString()} &bull; {new Date(w.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-[10px] text-emerald-500 font-bold uppercase">Received: {w.finalReceived.toFixed(2)} rs</span>
+                            <span className="text-[8px] opacity-30 uppercase font-bold">Tax: {w.taxApplied.toFixed(2)} rs</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* Comments Dialog */}
       <Dialog open={!!viewingCommentsFor} onOpenChange={() => setViewingCommentsFor(null)}>
-        <DialogContent className={cn("max-w-lg rounded-3xl max-h-[80vh] flex flex-col p-0", isWhiteTheme ? "bg-white text-black" : "bg-[#111111] border-white/10 text-white")}>
-          <DialogHeader className="p-6 border-b border-white/5"><DialogTitle className="font-headline italic">Neural Thread</DialogTitle></DialogHeader>
+        <DialogContent className={cn("max-w-lg rounded-3xl max-h-[80vh] flex flex-col p-0 overflow-hidden", isWhiteTheme ? "bg-white text-black" : "bg-[#111111] border-white/10 text-white")}>
+          <DialogHeader className="p-6 border-b border-white/5 flex flex-row items-center justify-between">
+            <DialogTitle className="font-headline italic tracking-tighter">Neural Thread</DialogTitle>
+          </DialogHeader>
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {viewingCommentsFor?.comments && Object.entries(viewingCommentsFor.comments).map(([id, c]) => (
               <div key={id} className="flex gap-3 items-start group">
-                <div className={cn("p-3 rounded-2xl flex-1 border", isWhiteTheme ? "bg-gray-50 border-gray-100" : "bg-white/5 border-white/5")}>
+                <div className={cn("p-4 rounded-3xl flex-1 border", isWhiteTheme ? "bg-gray-50 border-gray-100" : "bg-white/5 border-white/5 shadow-sm")}>
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-[11px] font-bold text-purple-600">@{c.chatName}</span>
-                    {(c.chatName === user?.chatName || viewingCommentsFor.chatName === user?.chatName) && (
-                      <button onClick={() => handleDeleteComment(viewingCommentsFor.id, id)} className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Trash2 size={12} />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[9px] opacity-30 font-bold">{new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      {(c.chatName === user?.chatName || viewingCommentsFor.chatName === user?.chatName) && (
+                        <button onClick={() => handleDeleteComment(viewingCommentsFor.id, id)} className="text-destructive hover:scale-110 transition-transform">
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm opacity-80">{c.text}</p>
+                  <p className="text-sm opacity-80 leading-relaxed">{c.text}</p>
                 </div>
               </div>
             ))}
+            {(!viewingCommentsFor?.comments || Object.entries(viewingCommentsFor.comments).length === 0) && (
+              <div className="py-12 text-center opacity-20 uppercase tracking-[0.4em] font-headline text-[10px]">No Neural Responses Found</div>
+            )}
           </div>
-          <div className="p-6 border-t border-white/5 flex gap-2">
+          <div className="p-6 border-t border-white/5 flex gap-2 backdrop-blur-md">
             <Input 
               placeholder="Respond..." 
-              className={cn("h-11 rounded-2xl border-none", isWhiteTheme ? "bg-gray-100" : "bg-white/5")}
+              className={cn("h-12 rounded-2xl border-none px-6", isWhiteTheme ? "bg-gray-100" : "bg-white/5")}
               value={commentText[viewingCommentsFor?.id || ""] || ""}
               onChange={(e) => setCommentText(prev => ({ ...prev, [viewingCommentsFor?.id || ""]: e.target.value }))}
               onKeyDown={(e) => e.key === 'Enter' && viewingCommentsFor && handleAddComment(viewingCommentsFor.id)}
             />
-            <Button onClick={() => viewingCommentsFor && handleAddComment(viewingCommentsFor.id)} className="h-11 w-11 rounded-2xl"><Send size={18} /></Button>
+            <Button onClick={() => viewingCommentsFor && handleAddComment(viewingCommentsFor.id)} className="h-12 w-12 rounded-2xl bg-primary hover:scale-105 transition-transform"><Send size={18} /></Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -566,4 +650,3 @@ export default function SocialSplashPage() {
     </div>
   );
 }
-
