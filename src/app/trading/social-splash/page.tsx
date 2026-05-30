@@ -26,13 +26,10 @@ import {
   Moon,
   BadgeCheck,
   Banknote,
-  Copy,
-  Wallet,
-  Landmark,
-  ShieldCheck,
-  Star,
   History,
-  Clock
+  Wallet,
+  Clock,
+  Star
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -319,8 +316,9 @@ function SocialSplashContent() {
   };
 
   const handleDeletePost = (postId: string) => {
-    remove(ref(db, `social_posts/${postId}`));
+    // Clear state before deletion to prevent focus lock
     setPostToDelete(null);
+    remove(ref(db, `social_posts/${postId}`));
     toast({ title: "Thread Purged" });
   };
 
@@ -501,14 +499,26 @@ function SocialSplashContent() {
                     <DropdownMenuItem disabled className="text-[10px] opacity-50 font-mono">ID: {post.id}</DropdownMenuItem>
                     {post.chatName === user?.chatName ? (
                       <>
-                        <DropdownMenuItem onClick={() => setEditingPost({id: post.id, text: post.text})} className={cn(isWhiteTheme ? "text-black" : "text-white")}>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            // Defer dialog opening to prevent Radix focus lock
+                            setTimeout(() => setEditingPost({id: post.id, text: post.text}), 100);
+                          }} 
+                          className={cn(isWhiteTheme ? "text-black" : "text-white")}
+                        >
                           <Edit3 className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => togglePrivate(post.id, post.isPrivate || false)} className={cn(isWhiteTheme ? "text-black" : "text-white")}>
                           {post.isPrivate ? <Globe className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
                           {post.isPrivate ? 'Make Public' : 'Make Private'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setPostToDelete(post.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            // Defer dialog opening to prevent Radix focus lock
+                            setTimeout(() => setPostToDelete(post.id), 100);
+                          }} 
+                          className="text-destructive focus:text-destructive"
+                        >
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </>
@@ -652,7 +662,7 @@ function SocialSplashContent() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!viewingCommentsFor} onOpenChange={() => setViewingCommentsFor(null)}>
+      <Dialog open={!!viewingCommentsFor} onOpenChange={(open) => !open && setViewingCommentsFor(null)}>
         <DialogContent className={cn("max-w-lg rounded-3xl max-h-[80vh] flex flex-col p-0 overflow-hidden", isWhiteTheme ? "bg-white text-black border-gray-200" : "bg-[#111111] border-white/10 text-white")}>
           <DialogHeader className="p-6 border-b border-white/5 flex flex-row items-center justify-between">
             <DialogTitle className="font-headline italic tracking-tighter">Neural Thread</DialogTitle>
@@ -693,7 +703,7 @@ function SocialSplashContent() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editingPost} onOpenChange={() => setEditingPost(null)}>
+      <Dialog open={!!editingPost} onOpenChange={(open) => !open && setEditingPost(null)}>
         <DialogContent className={cn("max-w-lg rounded-3xl flex flex-col p-6", isWhiteTheme ? "bg-white text-black border-gray-200" : "bg-[#111111] border-white/10 text-white")}>
           <DialogHeader>
             <DialogTitle className="font-headline italic">Edit Thread</DialogTitle>
