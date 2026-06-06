@@ -1,13 +1,18 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Coins } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { db as rtdb } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
+import { useToast } from '@/hooks/use-toast';
 
 export default function BitcoinTradingPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const sessionUser = sessionStorage.getItem('splash_session_user');
@@ -17,11 +22,34 @@ export default function BitcoinTradingPage() {
     }
 
     try {
-      setUser(JSON.parse(sessionUser));
+      const found = JSON.parse(sessionUser);
+      setUser(found);
+
+      // Real-time ban listener
+      const userBanRef = ref(rtdb, `users/${found.chatName}/bannedUntil`);
+      const unsubscribe = onValue(userBanRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const bannedUntil = snapshot.val();
+          if (bannedUntil > Date.now()) {
+            toast({
+              variant: "destructive",
+              title: "Policy Violation",
+              description: "Your Account is Banned"
+            });
+            
+            setTimeout(() => {
+              sessionStorage.setItem('pending_ban_info', bannedUntil.toString());
+              sessionStorage.removeItem('splash_session_user');
+              router.push('/');
+            }, 3000);
+          }
+        }
+      });
+      return () => unsubscribe();
     } catch (e) {
       router.push('/');
     }
-  }, [router]);
+  }, [router, toast]);
 
   if (!user) return null;
 

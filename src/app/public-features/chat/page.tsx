@@ -74,6 +74,20 @@ export default function PublicChatPage() {
           const bannedUntil = snapshot.val();
           const isActive = bannedUntil > Date.now();
           setIsBlocked(isActive);
+
+          if (isActive) {
+            toast({
+              variant: "destructive",
+              title: "Policy Violation",
+              description: "Your Account is Banned"
+            });
+            
+            setTimeout(() => {
+              sessionStorage.setItem('pending_ban_info', bannedUntil.toString());
+              sessionStorage.removeItem('splash_session_user');
+              router.push('/');
+            }, 3000);
+          }
         } else {
           setIsBlocked(false);
         }

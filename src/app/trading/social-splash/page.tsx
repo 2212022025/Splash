@@ -138,6 +138,27 @@ function SocialSplashContent() {
     const foundUser = JSON.parse(sessionUser);
     setUser(foundUser);
 
+    // Ban listener
+    const userBanRef = ref(db, `users/${foundUser.chatName}/bannedUntil`);
+    const unsubscribeBan = onValue(userBanRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const bannedUntil = snapshot.val();
+        if (bannedUntil > Date.now()) {
+          toast({
+            variant: "destructive",
+            title: "Policy Violation",
+            description: "Your Account is Banned"
+          });
+          
+          setTimeout(() => {
+            sessionStorage.setItem('pending_ban_info', bannedUntil.toString());
+            sessionStorage.removeItem('splash_session_user');
+            router.push('/');
+          }, 3000);
+        }
+      }
+    });
+
     const postsRef = query(ref(db, 'social_posts'), limitToLast(100));
     const unsubscribePosts = onValue(postsRef, (snapshot) => {
       const data = snapshot.val();
@@ -171,10 +192,11 @@ function SocialSplashContent() {
     });
 
     return () => {
+      unsubscribeBan();
       unsubscribePosts();
       unsubscribeWithdrawals();
     };
-  }, [router]);
+  }, [router, toast]);
 
   const getDisplayedViews = (post: SocialPost) => {
     const baseViews = post.views || 0;
@@ -191,7 +213,7 @@ function SocialSplashContent() {
     if (!post.targetLikesCount || !post.timestamp) return realLikes;
     const elapsed = Date.now() - post.timestamp;
     const duration = post.growthDuration || 86400000;
-    if (elapsed >= duration) return realLikes + post.targetLikesCount;
+    if (elapsed >= duration) realLikes + post.targetLikesCount;
     const progress = elapsed / duration;
     return realLikes + Math.floor(post.targetLikesCount * progress);
   };
