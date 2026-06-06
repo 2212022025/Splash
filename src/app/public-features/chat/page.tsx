@@ -99,6 +99,36 @@ export default function PublicChatPage() {
         if (snapshot.exists()) {
           const data = snapshot.val();
           setIncomingWin({ code: data.code });
+
+          // Trigger Sensory Feedback (Vibrate and Beep)
+          if (typeof window !== 'undefined') {
+            // 1. Vibration
+            if (navigator.vibrate) {
+              navigator.vibrate([200, 100, 200]);
+            }
+
+            // 2. Beep Sound (Web Audio API)
+            try {
+              const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+              if (AudioContextClass) {
+                const audioCtx = new AudioContextClass();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.3);
+              }
+            } catch (soundError) {
+              console.warn('Audio alert failed (blocked by browser policy?):', soundError);
+            }
+          }
         }
       });
 
@@ -160,7 +190,6 @@ export default function PublicChatPage() {
   const handleTransmissionSend = async () => {
     if (transmissionMode === 'all') {
       if (!singleCode.trim()) return;
-      // Fetch all users to distribute
       const usersSnap = await get(ref(db, 'users'));
       if (usersSnap.exists()) {
         const users = usersSnap.val();
