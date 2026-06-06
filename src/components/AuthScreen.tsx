@@ -96,7 +96,7 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
       const checkSnapshot = await get(userRef);
       
       if (checkSnapshot.exists()) {
-        toast({ variant: "destructive", title: "Error", description: "Chat Name already taken. Node identity collision detected." });
+        toast({ variant: "destructive", title: "Error", description: "Chat Name already taken. User identity collision detected." });
       } else {
         const newUser = { username, email, chatName, createdAt: Date.now() };
         await set(userRef, newUser);
@@ -105,7 +105,7 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
         localStorage.setItem('splash_last_email', email);
         
         onLoginSuccess(newUser);
-        toast({ title: "Node Created", description: "Your identity has been indexed on the network." });
+        toast({ title: "Account Created", description: "Your identity has been indexed on the network." });
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Could not create account." });
@@ -208,7 +208,7 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
             {isLogin ? (
               <><PlusCircle size={14} /> Create an Account</>
             ) : (
-              <><LogIn size={14} /> Existing Node</>
+              <><LogIn size={14} /> Existing Account</>
             )}
           </button>
         </CardFooter>

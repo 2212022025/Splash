@@ -187,7 +187,7 @@ export default function PublicChatPage() {
       });
     }
 
-    toast({ title: "Transmission Sent", description: "Rewards distributed to neural nodes." });
+    toast({ title: "Broadcast Sent", description: "Rewards distributed across the network." });
     setIsTransmitting(false);
     setSingleCode("");
     setCodes({});
@@ -197,12 +197,12 @@ export default function PublicChatPage() {
   const handleBlockUser = (chatName: string) => {
     const banUntil = Date.now() + (30 * 60 * 1000); // 30 mins
     update(ref(db, `users/${chatName}`), { bannedUntil: banUntil });
-    toast({ title: "Node Suspended", description: `User @${chatName} is now blocked.` });
+    toast({ title: "User Suspended", description: `User @${chatName} is now blocked.` });
   };
 
   const handleUnblockUser = (chatName: string) => {
     update(ref(db, `users/${chatName}`), { bannedUntil: null });
-    toast({ title: "Node Restored", description: `User @${chatName} is now unblocked.` });
+    toast({ title: "User Restored", description: `User @${chatName} is now unblocked.` });
   };
 
   const closeWinDialog = () => {
@@ -319,9 +319,14 @@ export default function PublicChatPage() {
                         </DropdownMenuItem>
                       )}
                       {currentUserIsModerator && !isOwn && (
-                        <DropdownMenuItem onClick={() => handleBlockUser(msg.chatName)} className="text-destructive focus:text-destructive">
-                          <UserX className="mr-2 h-4 w-4" /> Block Node
-                        </DropdownMenuItem>
+                        <>
+                          <DropdownMenuItem onClick={() => handleBlockUser(msg.chatName)} className="text-destructive focus:text-destructive">
+                            <UserX className="mr-2 h-4 w-4" /> Block User
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUnblockUser(msg.chatName)} className="text-emerald-400 focus:text-emerald-400">
+                            <UserCheck className="mr-2 h-4 w-4" /> Unblock User
+                          </DropdownMenuItem>
+                        </>
                       )}
                       {!isOwn && (
                         <DropdownMenuItem onClick={() => {
@@ -346,7 +351,7 @@ export default function PublicChatPage() {
           <Input 
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isBlocked ? "Blocked from transmission" : "Communicate..."}
+            placeholder={isBlocked ? "Communication disabled" : "Communicate..."}
             disabled={isBlocked}
             className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-accent placeholder:text-white/20"
           />
@@ -356,12 +361,12 @@ export default function PublicChatPage() {
         </form>
       </footer>
 
-      {/* Moderator Transmission Dialog */}
+      {/* Moderator Broadcast Dialog */}
       <Dialog open={isTransmitting} onOpenChange={setIsTransmitting}>
         <DialogContent className="bg-[#111111] border-white/10 text-white max-w-lg rounded-3xl p-6">
           <DialogHeader>
             <DialogTitle className="font-headline italic uppercase tracking-tighter flex items-center gap-2">
-              <Zap size={18} className="text-accent" /> Neural Transmission
+              <Zap size={18} className="text-accent" /> Neural Broadcast
             </DialogTitle>
           </DialogHeader>
           
@@ -398,7 +403,7 @@ export default function PublicChatPage() {
             {transmissionMode === 'selective' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] uppercase text-white/40 tracking-widest font-bold">Target Nodes</Label>
+                  <Label className="text-[10px] uppercase text-white/40 tracking-widest font-bold">Target Users</Label>
                   <div className="flex items-center gap-2">
                     <Checkbox 
                       id="multi-code" 
@@ -454,7 +459,7 @@ export default function PublicChatPage() {
 
                 {!isMultiCode && (
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase text-white/40 tracking-widest font-bold">Universal Selection Code</Label>
+                    <Label className="text-[10px] uppercase text-white/40 tracking-widest font-bold">Universal Code</Label>
                     <Input 
                       value={singleCode}
                       onChange={(e) => setSingleCode(e.target.value)}
@@ -470,7 +475,7 @@ export default function PublicChatPage() {
               onClick={handleTransmissionSend}
               className="w-full bg-accent text-black font-headline font-bold uppercase tracking-[0.2em] h-14 rounded-2xl hover:bg-accent/90"
             >
-              Initiate Transmission
+              Initiate Broadcast
             </Button>
           </div>
         </DialogContent>

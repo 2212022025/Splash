@@ -48,23 +48,23 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
         </Button>
       </header>
 
-      <main className="flex-1 p-6 max-w-2xl mx-auto w-full space-y-4 py-12">
+      <main className="flex-1 p-6 max-w-2xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-4 py-12">
         {/* Gaming Hub */}
         <Link href="/gaming-hub" className="block animate-in slide-in-from-bottom-2 duration-300">
-          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-blue-500/10 hover:border-blue-500/40 transition-all group active:scale-95 duration-200">
+          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-blue-500/10 hover:border-blue-500/40 transition-all group active:scale-95 duration-200 h-full">
             <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
               <Gamepad2 size={32} className="text-blue-400" />
             </div>
             <div className="flex flex-col">
               <span className="text-2xl font-headline font-bold text-white uppercase tracking-tight">Gaming Hub</span>
-              <span className="text-white/30 text-xs font-bold uppercase tracking-widest">External Node 01</span>
+              <span className="text-white/30 text-xs font-bold uppercase tracking-widest">External Hub 01</span>
             </div>
           </div>
         </Link>
 
         {/* AI Services */}
         <Link href="/ai-services" className="block animate-in slide-in-from-bottom-4 duration-400">
-          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-cyan-500/10 hover:border-cyan-500/40 transition-all group active:scale-95 duration-200">
+          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-cyan-500/10 hover:border-cyan-500/40 transition-all group active:scale-95 duration-200 h-full">
             <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 group-hover:scale-110 transition-transform">
               <BrainCircuit size={32} className="text-cyan-400" />
             </div>
@@ -77,7 +77,7 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
 
         {/* Public Feature */}
         <Link href="/public-features" className="block animate-in slide-in-from-bottom-6 duration-500">
-          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all group active:scale-95 duration-200">
+          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all group active:scale-95 duration-200 h-full">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 group-hover:scale-110 transition-transform">
               <Globe size={32} className="text-emerald-400" />
             </div>
@@ -90,13 +90,13 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
 
         {/* Trading Card */}
         <Link href="/trading" className="block animate-in slide-in-from-bottom-8 duration-600">
-          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-amber-500/10 hover:border-amber-500/40 transition-all group active:scale-95 duration-200">
+          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-amber-500/10 hover:border-amber-500/40 transition-all group active:scale-95 duration-200 h-full">
             <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 group-hover:scale-110 transition-transform">
               <TrendingUp size={32} className="text-amber-400" />
             </div>
             <div className="flex flex-col">
               <span className="text-2xl font-headline font-bold text-white uppercase tracking-tight">Trading</span>
-              <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Finance Node 04</span>
+              <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Finance Hub 04</span>
             </div>
           </div>
         </Link>
@@ -104,13 +104,13 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
         {/* Account & Service */}
         <Dialog>
           <DialogTrigger asChild>
-            <div className="cursor-pointer bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all group active:scale-95 duration-200 animate-in slide-in-from-bottom-10 duration-700">
+            <div className="cursor-pointer bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all group active:scale-95 duration-200 animate-in slide-in-from-bottom-10 duration-700 h-full col-span-1 md:col-span-2">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
                 <UserCircle size={32} className="text-purple-400" />
               </div>
               <div className="flex flex-col">
                 <span className="text-2xl font-headline font-bold text-white uppercase tracking-tight">Account & Service</span>
-                <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Profile Control</span>
+                <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Identity Control</span>
               </div>
             </div>
           </DialogTrigger>
