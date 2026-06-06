@@ -3,10 +3,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, push, onValue, remove, set, query, limitToLast, get, child } from 'firebase/database';
+import { ref, push, onValue, remove, set, query, limitToLast, get, child, update } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, UserX, Clock, User, ShieldAlert, Zap, X, Check, Copy } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, Clock, User, ShieldAlert, Zap, X, Check, Copy, UserX, UserCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -21,8 +21,6 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
 
-const ABUSE_WORDS = ["fuck", "fck", "fuk", "phuck", "f*ck", "shit", "sh1t", "sh*t", "bitch", "btch", "b!tch", "asshole", "arsehole", "bastard", "basterd", "dick", "d*ck", "d1ck", "pussy", "cock", "slut", "whore", "wh0re", "chutiya", "chootiya", "bc", "bhenchod", "behenchod", "bhadve", "bcn", "mc", "madarchod", "maderchod", "mdarchod", "gaand", "gand", "gnd", "gaandfat", "lauda", "luda", "l0da", "lora", "lavda", "kamina", "kameena", "kmeena", "sala", "saala", "bsdk", "bhosdike", "bhosad", "bhosadpappu"];
-
 interface ChatMessage {
   id: string;
   chatName: string;
@@ -35,6 +33,7 @@ interface ChatMessage {
 interface UserRecord {
   chatName: string;
   username: string;
+  bannedUntil?: number;
 }
 
 export default function PublicChatPage() {
@@ -45,7 +44,7 @@ export default function PublicChatPage() {
   const [isTransmitting, setIsTransmitting] = useState(false);
   const [allUsers, setAllUsers] = useState<UserRecord[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [transmissionMode, setTransmissionMode] = useState<'all' | 'selective' | 'single'>('all');
+  const [transmissionMode, setTransmissionMode] = useState<'all' | 'selective'>('all');
   const [codes, setCodes] = useState<Record<string, string>>({});
   const [singleCode, setSingleCode] = useState("");
   const [isMultiCode, setIsMultiCode] = useState(false);
@@ -67,67 +66,43 @@ export default function PublicChatPage() {
       const found = JSON.parse(sessionUser);
       setUser(found);
       
-      // Listen to the user's specific ban record
       const userBanRef = ref(db, `users/${found.chatName}/bannedUntil`);
       const unsubscribeBan = onValue(userBanRef, (snapshot) => {
         if (snapshot.exists()) {
           const bannedUntil = snapshot.val();
           const isActive = bannedUntil > Date.now();
           setIsBlocked(isActive);
-
-          if (isActive) {
-            toast({
-              variant: "destructive",
-              title: "Policy Violation",
-              description: "Your Account is Banned"
-            });
-            
-            setTimeout(() => {
-              sessionStorage.setItem('pending_ban_info', bannedUntil.toString());
-              sessionStorage.removeItem('splash_session_user');
-              router.push('/');
-            }, 3000);
-          }
         } else {
           setIsBlocked(false);
         }
       });
 
-      // Listen for incoming transmissions/wins
       const transmissionRef = ref(db, `transmissions/${found.chatName}`);
       const unsubscribeTrans = onValue(transmissionRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
           setIncomingWin({ code: data.code });
 
-          // Trigger Sensory Feedback (Vibrate and Beep)
+          // Sensory Feedback
           if (typeof window !== 'undefined') {
-            // 1. Vibration
             if (navigator.vibrate) {
               navigator.vibrate([200, 100, 200]);
             }
-
-            // 2. Beep Sound (Web Audio API)
             try {
               const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
               if (AudioContextClass) {
                 const audioCtx = new AudioContextClass();
                 const oscillator = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
-
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
-
                 oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
                 gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                
                 oscillator.start();
                 oscillator.stop(audioCtx.currentTime + 0.3);
               }
-            } catch (soundError) {
-              console.warn('Audio alert failed (blocked by browser policy?):', soundError);
-            }
+            } catch (e) {}
           }
         }
       });
@@ -217,6 +192,17 @@ export default function PublicChatPage() {
     setSingleCode("");
     setCodes({});
     setSelectedUsers([]);
+  };
+
+  const handleBlockUser = (chatName: string) => {
+    const banUntil = Date.now() + (30 * 60 * 1000); // 30 mins
+    update(ref(db, `users/${chatName}`), { bannedUntil: banUntil });
+    toast({ title: "Node Suspended", description: `User @${chatName} is now blocked.` });
+  };
+
+  const handleUnblockUser = (chatName: string) => {
+    update(ref(db, `users/${chatName}`), { bannedUntil: null });
+    toast({ title: "Node Restored", description: `User @${chatName} is now unblocked.` });
   };
 
   const closeWinDialog = () => {
@@ -332,6 +318,11 @@ export default function PublicChatPage() {
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       )}
+                      {currentUserIsModerator && !isOwn && (
+                        <DropdownMenuItem onClick={() => handleBlockUser(msg.chatName)} className="text-destructive focus:text-destructive">
+                          <UserX className="mr-2 h-4 w-4" /> Block Node
+                        </DropdownMenuItem>
+                      )}
                       {!isOwn && (
                         <DropdownMenuItem onClick={() => {
                           push(ref(db, 'reports'), { messageId: msg.id, sender: msg.chatName, content: msg.text, timestamp: Date.now() });
@@ -436,14 +427,25 @@ export default function PublicChatPage() {
                           <label htmlFor={`user-${u.chatName}`} className="text-xs font-bold uppercase tracking-tight cursor-pointer">
                             @{u.chatName}
                           </label>
-                          {isMultiCode && selectedUsers.includes(u.chatName) && (
-                            <Input 
-                              value={codes[u.chatName] || ""}
-                              onChange={(e) => setCodes({ ...codes, [u.chatName]: e.target.value })}
-                              placeholder="Code"
-                              className="h-7 w-24 text-[10px] bg-white/5 border-white/10 py-0"
-                            />
-                          )}
+                          <div className="flex items-center gap-2">
+                            {u.bannedUntil && u.bannedUntil > Date.now() ? (
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-400" onClick={() => handleUnblockUser(u.chatName)}>
+                                <UserCheck size={14} />
+                              </Button>
+                            ) : (
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleBlockUser(u.chatName)}>
+                                <UserX size={14} />
+                              </Button>
+                            )}
+                            {isMultiCode && selectedUsers.includes(u.chatName) && (
+                              <Input 
+                                value={codes[u.chatName] || ""}
+                                onChange={(e) => setCodes({ ...codes, [u.chatName]: e.target.value })}
+                                placeholder="Code"
+                                className="h-7 w-24 text-[10px] bg-white/5 border-white/10 py-0"
+                              />
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
