@@ -461,7 +461,7 @@ export default function PublicChatPage() {
           
           <div className="space-y-6 py-4 relative z-10">
             <p className="text-sm text-white/80 leading-relaxed font-bold uppercase tracking-tight">
-              A high-priority reward transmission has reached your node.
+              You Are Lucky
             </p>
             
             <div className="bg-white/5 p-6 rounded-3xl border border-white/10 backdrop-blur-md">
@@ -482,7 +482,12 @@ export default function PublicChatPage() {
             </div>
 
             <Button 
-              onClick={closeWinDialog}
+              onClick={() => {
+                if (incomingWin?.code) {
+                  copyCode(incomingWin.code);
+                }
+                closeWinDialog();
+              }}
               className="w-full bg-white text-black font-headline font-bold uppercase tracking-widest h-14 rounded-2xl hover:bg-white/90"
             >
               Claim Reward
