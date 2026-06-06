@@ -21,6 +21,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
 
+const ABUSE_WORDS = ["fuck", "fck", "fuk", "phuck", "f*ck", "shit", "sh1t", "sh*t", "bitch", "btch", "b!tch", "asshole", "arsehole", "bastard", "basterd", "dick", "d*ck", "d1ck", "pussy", "cock", "slut", "whore", "wh0re", "chutiya", "chootiya", "bc", "bhenchod", "behenchod", "bhadve", "bcn", "mc", "madarchod", "maderchod", "mdarchod", "gaand", "gand", "gnd", "gaandfat", "lauda", "luda", "l0da", "lora", "lavda", "kamina", "kameena", "kmeena", "sala", "saala", "bsdk", "bhosdike", "bhosad", "bhosadpappu"];
+
 interface ChatMessage {
   id: string;
   chatName: string;
@@ -205,6 +207,25 @@ export default function PublicChatPage() {
     toast({ title: "User Restored", description: `User @${chatName} is now unblocked.` });
   };
 
+  const handleReport = (msg: ChatMessage) => {
+    if (!user) return;
+    push(ref(db, 'reports'), { 
+      type: 'public_chat',
+      messageId: msg.id, 
+      sender: msg.chatName, 
+      content: msg.text, 
+      timestamp: Date.now() 
+    });
+    
+    const content = msg.text.toLowerCase();
+    if (ABUSE_WORDS.some(word => content.includes(word))) {
+      const banUntil = Date.now() + (30 * 60 * 1000); // 30 mins
+      update(ref(db, `users/${msg.chatName}`), { bannedUntil: banUntil });
+    }
+    
+    toast({ title: "Report Successfully", description: "This message is now under review." });
+  };
+
   const closeWinDialog = () => {
     if (user) {
       remove(ref(db, `transmissions/${user.chatName}`));
@@ -329,10 +350,7 @@ export default function PublicChatPage() {
                         </>
                       )}
                       {!isOwn && (
-                        <DropdownMenuItem onClick={() => {
-                          push(ref(db, 'reports'), { messageId: msg.id, sender: msg.chatName, content: msg.text, timestamp: Date.now() });
-                          toast({ title: "Reported" });
-                        }}>
+                        <DropdownMenuItem onClick={() => handleReport(msg)}>
                           <Flag className="mr-2 h-4 w-4" /> Report
                         </DropdownMenuItem>
                       )}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
@@ -29,7 +30,9 @@ import {
   History,
   Wallet,
   Clock,
-  Star
+  Star,
+  UserX,
+  UserCheck
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -225,7 +228,7 @@ function SocialSplashContent() {
       toast({ 
         variant: "destructive",
         title: "Daily Limit Reached", 
-        description: "Network security protocols allow only 5 broadcasts per solar cycle." 
+        description: "Network security protocols allow only 5 broadcasts per cycle." 
       });
       return;
     }
@@ -316,7 +319,6 @@ function SocialSplashContent() {
   };
 
   const handleDeletePost = (postId: string) => {
-    // Clear state before deletion to prevent focus lock
     setPostToDelete(null);
     remove(ref(db, `social_posts/${postId}`));
     toast({ title: "Thread Purged" });
@@ -365,8 +367,8 @@ function SocialSplashContent() {
     
     const content = post.text.toLowerCase();
     if (ABUSE_WORDS.some(word => content.includes(word))) {
-      const banUntil = Date.now() + (30 * 60 * 1000);
-      set(ref(db, `users/${post.chatName}/bannedUntil`), banUntil);
+      const banUntil = Date.now() + (30 * 60 * 1000); // 30 mins
+      update(ref(db, `users/${post.chatName}`), { bannedUntil: banUntil });
     }
     toast({ title: "Report Successfully", description: "This post is now under review." });
   };
@@ -501,7 +503,6 @@ function SocialSplashContent() {
                       <>
                         <DropdownMenuItem 
                           onClick={() => {
-                            // Defer dialog opening to prevent Radix focus lock
                             setTimeout(() => setEditingPost({id: post.id, text: post.text}), 100);
                           }} 
                           className={cn(isWhiteTheme ? "text-black" : "text-white")}
@@ -514,7 +515,6 @@ function SocialSplashContent() {
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => {
-                            // Defer dialog opening to prevent Radix focus lock
                             setTimeout(() => setPostToDelete(post.id), 100);
                           }} 
                           className="text-destructive focus:text-destructive"
