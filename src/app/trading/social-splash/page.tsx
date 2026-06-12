@@ -210,12 +210,23 @@ function SocialSplashContent() {
 
   const getDisplayedLikes = (post: SocialPost) => {
     const realLikes = Object.keys(post.likes || {}).length;
-    if (!post.targetLikesCount || !post.timestamp) return realLikes;
-    const elapsed = Date.now() - post.timestamp;
-    const duration = post.growthDuration || 86400000;
-    if (elapsed >= duration) realLikes + post.targetLikesCount;
-    const progress = elapsed / duration;
-    return realLikes + Math.floor(post.targetLikesCount * progress);
+    const currentViews = getDisplayedViews(post);
+    
+    let simulatedLikes = 0;
+    if (post.targetLikesCount && post.timestamp) {
+      const elapsed = Date.now() - post.timestamp;
+      const duration = post.growthDuration || 86400000;
+      if (elapsed >= duration) {
+        simulatedLikes = post.targetLikesCount;
+      } else {
+        const progress = elapsed / duration;
+        simulatedLikes = Math.floor(post.targetLikesCount * progress);
+      }
+    }
+    
+    const totalLikes = realLikes + simulatedLikes;
+    // Constraint: Likes cannot exceed views
+    return Math.min(totalLikes, currentViews);
   };
 
   const userStats = useMemo(() => {
@@ -321,7 +332,7 @@ function SocialSplashContent() {
     }).then(() => {
       toast({ 
         title: "Withdrawal Successful", 
-        description: `Successfully withdrawn ${amountRequested}rs. Total deducted from node: ${totalNeeded.toFixed(2)}rs.` 
+        description: `Successfully withdrawn ${amountRequested}rs. Total deducted from account: ${totalNeeded.toFixed(2)}rs.` 
       });
       setWithdrawalAmount("");
       setIsWithdrawing(false);
@@ -769,7 +780,7 @@ function SocialSplashContent() {
       </AlertDialog>
 
       <footer className={cn("fixed bottom-0 left-0 w-full p-4 text-center backdrop-blur-lg border-t z-40", isWhiteTheme ? "bg-white/80 border-gray-200" : "bg-black/60 border-white/5")}>
-        <p className={cn("text-[9px] uppercase tracking-[0.6em] font-headline italic opacity-20")}>Neural Social Link &bull; SV-12 Pro Node Active</p>
+        <p className={cn("text-[9px] uppercase tracking-[0.6em] font-headline italic opacity-20")}>Neural Social Link &bull; SV-12 Pro Active</p>
       </footer>
     </div>
   );
