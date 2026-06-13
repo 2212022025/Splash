@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, get, child, set, ref as rtdbRef } from 'firebase/database';
+import { ref, get, child, set, update, ref as rtdbRef } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,6 +62,12 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
             return;
           }
 
+          // Save last login details
+          await update(rtdbRef(db, `users/${foundUser.chatName}`), {
+            lastLoginAt: Date.now(),
+            lastLoginDate: new Date().toLocaleString()
+          });
+
           localStorage.setItem('splash_last_username', username);
           localStorage.setItem('splash_last_email', email);
           onLoginSuccess(foundUser);
@@ -98,7 +104,14 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
       if (checkSnapshot.exists()) {
         toast({ variant: "destructive", title: "Error", description: "Chat Name already taken. User identity collision detected." });
       } else {
-        const newUser = { username, email, chatName, createdAt: Date.now() };
+        const newUser = { 
+          username, 
+          email, 
+          chatName, 
+          createdAt: Date.now(),
+          lastLoginAt: Date.now(),
+          lastLoginDate: new Date().toLocaleString()
+        };
         await set(userRef, newUser);
         
         localStorage.setItem('splash_last_username', username);
