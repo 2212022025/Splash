@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import { ref, push, onValue, remove, set, query, limitToLast, get, child, update } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, Clock, User, ShieldAlert, Zap, X, Check, Copy, UserX, UserCheck, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, Clock, User, ShieldAlert, Zap, X, Check, Copy, UserX, UserCheck, ExternalLink, Image as ImageIcon, Film, Music } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -50,6 +50,7 @@ export default function PublicChatPage() {
   const [codes, setCodes] = useState<Record<string, string>>({});
   const [singleCode, setSingleCode] = useState("");
   const [isMultiCode, setIsMultiCode] = useState(false);
+  const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   
   const [incomingWin, setIncomingWin] = useState<{ code: string } | null>(null);
 
@@ -275,9 +276,17 @@ export default function PublicChatPage() {
         if (isImage) {
           return (
             <div className="space-y-2">
-              <img src={url} alt="Media broadcast" className="rounded-xl max-w-full h-auto border border-white/10 shadow-lg" />
+              <div 
+                className="cursor-pointer group relative overflow-hidden rounded-xl border border-white/10 shadow-lg"
+                onClick={() => setFullScreenImage(url)}
+              >
+                <img src={url} alt="Media broadcast" className="w-full h-auto transition-transform group-hover:scale-105 duration-500" />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                   <ImageIcon size={24} className="text-white drop-shadow-lg" />
+                </div>
+              </div>
               <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest italic flex items-center gap-1">
-                <Zap size={10} className="text-accent" /> Visual Broadcast
+                <ImageIcon size={10} className="text-accent" /> Visual Broadcast
               </p>
             </div>
           );
@@ -288,7 +297,7 @@ export default function PublicChatPage() {
             <div className="space-y-2">
               <video src={url} controls className="rounded-xl max-w-full border border-white/10 shadow-lg" />
               <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest italic flex items-center gap-1">
-                <ShieldCheck size={10} className="text-blue-400" /> Video Protocol
+                <Film size={10} className="text-blue-400" /> Video Protocol
               </p>
             </div>
           );
@@ -299,7 +308,7 @@ export default function PublicChatPage() {
             <div className="space-y-2 py-2">
               <audio src={url} controls className="w-full h-8" />
               <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest italic flex items-center gap-1">
-                <Zap size={10} className="text-emerald-400" /> Audio Transmission
+                <Music size={10} className="text-emerald-400" /> Audio Transmission
               </p>
             </div>
           );
@@ -629,6 +638,25 @@ export default function PublicChatPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Full Screen Image Viewer */}
+      {fullScreenImage && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setFullScreenImage(null)}
+            className="absolute top-6 right-6 text-white/60 hover:text-white bg-white/10 rounded-full h-12 w-12"
+          >
+            <X size={32} />
+          </Button>
+          <img 
+            src={fullScreenImage} 
+            alt="Full Screen Broadcast" 
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-500" 
+          />
+        </div>
+      )}
     </div>
   );
 }
