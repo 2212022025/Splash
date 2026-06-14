@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
 
-const ABUSE_WORDS = ["fuck", "fck", "fuk", "phuck", "f*ck", "shit", "sh1t", "sh*t", "bitch", "btch", "b!tch", "asshole", "arsehole", "bastard", "basterd", "dick", "d*ck", "d1ck", "pussy", "cock", "slut", "whore", "wh0re", "chutiya", "chootiya", "bc", "bhenchod", "behenchod", "bhadve", "bcn", "mc", "madarchod", "maderchod", "mdarchod", "gaand", "gand", "gnd", "gaandfat", "lauda", "luda", "l0da", "lora", "lavda", "kamina", "kameena", "kmeena", "sala", "saala", "bsdk", "bhosdike", "bhosad", "bhosadpappu"];
+const ABUSE_WORDS = ["fuck", "fck", "fuk", "phuck", "f*ck", "shit", "sh1t", "sht", "sh*t", "bitch", "btch", "b!tch", "asshole", "arsehole", "bastard", "basterd", "dick", "d*ck", "d1ck", "pussy", "cock", "slut", "whore", "wh0re", "chutiya", "chootiya", "bc", "bhenchod", "behenchod", "bhadve", "bcn", "mc", "madarchod", "maderchod", "mdarchod", "gaand", "gand", "gnd", "gaandfat", "lauda", "luda", "l0da", "lora", "lavda", "kamina", "kameena", "kmeena", "sala", "saala", "bsdk", "bhosdike", "bhosad", "bhosadpappu"];
 
 interface ChatMessage {
   id: string;
@@ -30,6 +30,7 @@ interface ChatMessage {
   text: string;
   timestamp: number;
   isModerator: boolean;
+  isSecurity?: boolean;
 }
 
 interface UserRecord {
@@ -161,6 +162,17 @@ export default function PublicChatPage() {
     setIsTransmitting(true);
   };
 
+  const postSecurityBanMessage = (chatName: string) => {
+    push(ref(db, 'public_chat'), {
+      chatName: 'Security System',
+      username: 'Security System',
+      text: `System has Detected Abnormal Activity with account @${chatName} It has been Temporarily Suspended`,
+      timestamp: Date.now(),
+      isSecurity: true,
+      isModerator: false
+    });
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
@@ -228,6 +240,7 @@ export default function PublicChatPage() {
   const handleBlockUser = (chatName: string) => {
     const banUntil = Date.now() + (30 * 60 * 1000); // 30 mins
     update(ref(db, `users/${chatName}`), { bannedUntil: banUntil });
+    postSecurityBanMessage(chatName);
     toast({ title: "User Suspended", description: `User @${chatName} is now blocked.` });
   };
 
@@ -250,6 +263,7 @@ export default function PublicChatPage() {
     if (ABUSE_WORDS.some(word => content.includes(word))) {
       const banUntil = Date.now() + (30 * 60 * 1000); // 30 mins
       update(ref(db, `users/${msg.chatName}`), { bannedUntil: banUntil });
+      postSecurityBanMessage(msg.chatName);
     }
     
     toast({ title: "Report Successfully", description: "This message is now under review." });
@@ -275,7 +289,24 @@ export default function PublicChatPage() {
     return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
-  const renderMessageContent = (msgText: string) => {
+  const renderMessageContent = (msg: ChatMessage) => {
+    const msgText = msg.text;
+
+    if (msg.isSecurity) {
+      const parts = msgText.split(/(@\w+)/);
+      return (
+        <p className="text-xs font-bold leading-relaxed">
+          {parts.map((part, i) => (
+            part.startsWith('@') ? (
+              <span key={i} className="text-yellow-400 font-black">{part}</span>
+            ) : (
+              <span key={i} className="text-red-500">{part}</span>
+            )
+          ))}
+        </p>
+      );
+    }
+
     if (msgText.startsWith('//000')) {
       const urlMatch = msgText.match(/https?:\/\/[^\s]+/);
       if (urlMatch) {
@@ -416,70 +447,87 @@ export default function PublicChatPage() {
               )}
               
               <div 
-                className={`flex flex-col max-w-[85%] sm:max-w-[70%] ${isOwn ? 'ml-auto items-end' : 'items-start'}`}
+                className={cn(
+                  "flex flex-col",
+                  msg.isSecurity ? "w-full items-center my-4" : isOwn ? "ml-auto items-end max-w-[85%] sm:max-w-[70%]" : "items-start max-w-[85%] sm:max-w-[70%]"
+                )}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  {!isOwn && (
-                    <div className="w-5 h-5 rounded-lg bg-white/10 flex items-center justify-center border border-white/5">
-                      <User size={10} className="text-white/40" />
-                    </div>
-                  )}
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${msg.isModerator ? 'text-blue-400' : 'text-white/40'}`}>
-                    {msg.chatName.replace('#225', '')}
-                  </span>
-                  {msg.isModerator && <ShieldCheck size={12} className="text-blue-400 fill-blue-400/20" />}
-                  {isOwn && (
-                    <div className="w-5 h-5 rounded-lg bg-primary/30 flex items-center justify-center border border-white/5">
-                      <User size={10} className="text-white/60" />
-                    </div>
-                  )}
-                </div>
+                {!msg.isSecurity && (
+                  <div className="flex items-center gap-2 mb-1">
+                    {!isOwn && (
+                      <div className="w-5 h-5 rounded-lg bg-white/10 flex items-center justify-center border border-white/5">
+                        <User size={10} className="text-white/40" />
+                      </div>
+                    )}
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${msg.isModerator ? 'text-blue-400' : 'text-white/40'}`}>
+                      {msg.chatName.replace('#225', '')}
+                    </span>
+                    {msg.isModerator && <ShieldCheck size={12} className="text-blue-400 fill-blue-400/20" />}
+                    {isOwn && (
+                      <div className="w-5 h-5 rounded-lg bg-primary/30 flex items-center justify-center border border-white/5">
+                        <User size={10} className="text-white/60" />
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                <div className={`flex items-end gap-2 group ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`px-4 py-2.5 rounded-2xl relative shadow-lg ${
-                    msg.isModerator 
-                      ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50' 
-                      : isOwn 
-                        ? 'bg-primary text-white rounded-tr-none' 
-                        : 'bg-white/5 border border-white/10 rounded-tl-none'
-                  }`}>
-                    {renderMessageContent(msg.text)}
-                    <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                      <Clock size={8} className="text-white/20" />
-                      <span className="text-[8px] text-white/30 font-medium">{formatTime(msg.timestamp)}</span>
+                {msg.isSecurity ? (
+                  <div className="bg-red-500/10 border border-red-500/30 px-6 py-3 rounded-2xl flex items-center gap-4 shadow-[0_0_30px_rgba(239,68,68,0.1)] max-w-[90%] md:max-w-md animate-in fade-in zoom-in duration-300">
+                    <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 border border-red-500/30">
+                      <ShieldAlert size={20} className="text-red-500 animate-pulse" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-red-500 font-black uppercase tracking-[0.2em] mb-0.5">Security System</span>
+                      {renderMessageContent(msg)}
                     </div>
                   </div>
+                ) : (
+                  <div className={`flex items-end gap-2 group ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={`px-4 py-2.5 rounded-2xl relative shadow-lg ${
+                      msg.isModerator 
+                        ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50' 
+                        : isOwn 
+                          ? 'bg-primary text-white rounded-tr-none' 
+                          : 'bg-white/5 border border-white/10 rounded-tl-none'
+                    }`}>
+                      {renderMessageContent(msg)}
+                      <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                        <Clock size={8} className="text-white/20" />
+                        <span className="text-[8px] text-white/30 font-medium">{formatTime(msg.timestamp)}</span>
+                      </div>
+                    </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <MoreVertical size={12} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align={isOwn ? "end" : "start"} className="bg-[#161616] border-white/10 text-white">
-                      {(isOwn || currentUserIsModerator) && (
-                        <DropdownMenuItem onClick={() => remove(ref(db, `public_chat/${msg.id}`))} className="text-destructive focus:text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      )}
-                      {currentUserIsModerator && !isOwn && (
-                        <>
-                          <DropdownMenuItem onClick={() => handleBlockUser(msg.chatName)} className="text-destructive focus:text-destructive">
-                            <UserX className="mr-2 h-4 w-4" /> Block User
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <MoreVertical size={12} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align={isOwn ? "end" : "start"} className="bg-[#161616] border-white/10 text-white">
+                        {(isOwn || currentUserIsModerator) && (
+                          <DropdownMenuItem onClick={() => remove(ref(db, `public_chat/${msg.id}`))} className="text-destructive focus:text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleUnblockUser(msg.chatName)} className="text-emerald-400 focus:text-emerald-400">
-                            <UserCheck className="mr-2 h-4 w-4" /> Unblock User
+                        )}
+                        {currentUserIsModerator && !isOwn && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleBlockUser(msg.chatName)} className="text-destructive focus:text-destructive">
+                              <UserX className="mr-2 h-4 w-4" /> Block User
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleUnblockUser(msg.chatName)} className="text-emerald-400 focus:text-emerald-400">
+                              <UserCheck className="mr-2 h-4 w-4" /> Unblock User
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {!isOwn && (
+                          <DropdownMenuItem onClick={() => handleReport(msg)}>
+                            <Flag className="mr-2 h-4 w-4" /> Report
                           </DropdownMenuItem>
-                        </>
-                      )}
-                      {!isOwn && (
-                        <DropdownMenuItem onClick={() => handleReport(msg)}>
-                          <Flag className="mr-2 h-4 w-4" /> Report
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
               </div>
             </React.Fragment>
           );
