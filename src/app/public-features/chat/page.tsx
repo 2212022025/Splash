@@ -51,6 +51,7 @@ export default function PublicChatPage() {
   const [singleCode, setSingleCode] = useState("");
   const [isMultiCode, setIsMultiCode] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
+  const [investigationState, setInvestigationState] = useState<{ active: boolean; status: string }>({ active: false, status: "" });
   
   const [incomingWin, setIncomingWin] = useState<{ code: string } | null>(null);
 
@@ -164,6 +165,19 @@ export default function PublicChatPage() {
     e.preventDefault();
     const text = input.trim();
     if (!text || !user || isBlocked) return;
+
+    if (text.startsWith('//225')) {
+      setInput("");
+      setInvestigationState({ active: true, status: "System is Currently Investigation This Chat Server" });
+      
+      setTimeout(() => {
+        setInvestigationState(prev => ({ ...prev, status: "Security Scanning successfully" }));
+        setTimeout(() => {
+          setInvestigationState({ active: false, status: "" });
+        }, 3000);
+      }, 15000);
+      return;
+    }
 
     const isModerator = user.username.includes('#225');
     const messagesRef = ref(db, 'public_chat');
@@ -317,7 +331,7 @@ export default function PublicChatPage() {
         // Generic Link
         return (
           <div className="space-y-3">
-            <p className="text-sm italic opacity-60">Transmission contains an external link.</p>
+            <p className="text-sm italic opacity-60">This Message Contains an External Link</p>
             <Button 
               variant="outline" 
               size="sm" 
@@ -365,6 +379,26 @@ export default function PublicChatPage() {
           </Button>
         )}
       </header>
+
+      {investigationState.active && (
+        <div className="fixed top-16 left-0 w-full z-40 animate-in slide-in-from-top duration-500">
+          <div className={cn(
+            "mx-4 my-2 p-4 rounded-2xl flex items-center justify-center gap-3 border shadow-2xl transition-colors duration-500",
+            investigationState.status.includes("Investigation") 
+              ? "bg-red-600 border-red-500 text-white" 
+              : "bg-emerald-600 border-emerald-500 text-white"
+          )}>
+            {investigationState.status.includes("Investigation") ? (
+              <ShieldAlert className="animate-pulse" />
+            ) : (
+              <Check className="text-white" />
+            )}
+            <span className="font-headline font-bold text-xs uppercase tracking-widest text-center italic">
+              {investigationState.status}
+            </span>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth">
         {messages.map((msg, idx) => {
