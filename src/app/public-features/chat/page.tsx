@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import { ref, push, onValue, remove, set, query, limitToLast, get, child, update } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, Clock, User, ShieldAlert, Zap, X, Check, Copy, UserX, UserCheck } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, Clock, User, ShieldAlert, Zap, X, Check, Copy, UserX, UserCheck, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -260,6 +260,72 @@ export default function PublicChatPage() {
     return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
+  const renderMessageContent = (msgText: string) => {
+    if (msgText.startsWith('//000')) {
+      const urlMatch = msgText.match(/https?:\/\/[^\s]+/);
+      if (urlMatch) {
+        const url = urlMatch[0];
+        const lowerUrl = url.toLowerCase();
+        
+        // Media Check
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/.test(lowerUrl);
+        const isVideo = /\.(mp4|webm|ogg)$/.test(lowerUrl);
+        const isAudio = /\.(mp3|wav|ogg)$/.test(lowerUrl);
+
+        if (isImage) {
+          return (
+            <div className="space-y-2">
+              <img src={url} alt="Media broadcast" className="rounded-xl max-w-full h-auto border border-white/10 shadow-lg" />
+              <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest italic flex items-center gap-1">
+                <Zap size={10} className="text-accent" /> Visual Broadcast
+              </p>
+            </div>
+          );
+        }
+
+        if (isVideo) {
+          return (
+            <div className="space-y-2">
+              <video src={url} controls className="rounded-xl max-w-full border border-white/10 shadow-lg" />
+              <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest italic flex items-center gap-1">
+                <ShieldCheck size={10} className="text-blue-400" /> Video Protocol
+              </p>
+            </div>
+          );
+        }
+
+        if (isAudio) {
+          return (
+            <div className="space-y-2 py-2">
+              <audio src={url} controls className="w-full h-8" />
+              <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest italic flex items-center gap-1">
+                <Zap size={10} className="text-emerald-400" /> Audio Transmission
+              </p>
+            </div>
+          );
+        }
+
+        // Generic Link
+        return (
+          <div className="space-y-3">
+            <p className="text-sm italic opacity-60">Transmission contains an external link.</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full bg-white/5 border-white/10 hover:bg-white/10 text-[10px] uppercase font-bold tracking-widest h-9 rounded-xl flex items-center gap-2"
+              asChild
+            >
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={12} /> Visit Site
+              </a>
+            </Button>
+          </div>
+        );
+      }
+    }
+    return <p className="text-sm leading-relaxed break-words">{msgText}</p>;
+  };
+
   if (!user) return null;
 
   const currentUserIsModerator = user.username.includes('#225');
@@ -334,7 +400,7 @@ export default function PublicChatPage() {
                         ? 'bg-primary text-white rounded-tr-none' 
                         : 'bg-white/5 border border-white/10 rounded-tl-none'
                   }`}>
-                    <p className="text-sm leading-relaxed break-words">{msg.text}</p>
+                    {renderMessageContent(msg.text)}
                     <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
                       <Clock size={8} className="text-white/20" />
                       <span className="text-[8px] text-white/30 font-medium">{formatTime(msg.timestamp)}</span>
