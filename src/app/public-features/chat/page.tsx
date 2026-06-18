@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, push, onValue, remove, set, query, limitToLast, get, child, update } from 'firebase/database';
+import { ref, push, onValue, remove, set, query, get, child, update } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, Clock, User, ShieldAlert, Zap, X, Check, Copy, UserX, UserCheck, ExternalLink, Image as ImageIcon, Film, Music } from 'lucide-react';
@@ -102,7 +102,6 @@ export default function PublicChatPage() {
           const data = snapshot.val();
           setIncomingWin({ code: data.code });
 
-          // Sensory Feedback
           if (typeof window !== 'undefined') {
             if (navigator.vibrate) {
               navigator.vibrate([200, 100, 200]);
@@ -126,9 +125,29 @@ export default function PublicChatPage() {
         }
       });
 
+      // Global Investigation Listener
+      const investigationRef = ref(db, 'chat_system/investigation');
+      const unsubscribeInvestigation = onValue(investigationRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const elapsed = Date.now() - data.startTime;
+          
+          if (elapsed < 15000) {
+            setInvestigationState({ active: true, status: "System is Currently Investigation This Chat Server" });
+          } else if (elapsed < 18000) {
+            setInvestigationState({ active: true, status: "Security Scanning successfully" });
+          } else {
+            setInvestigationState({ active: false, status: "" });
+          }
+        } else {
+          setInvestigationState({ active: false, status: "" });
+        }
+      });
+
       return () => {
         unsubscribeBan();
         unsubscribeTrans();
+        unsubscribeInvestigation();
       };
     } catch (e) {
       router.push('/');
@@ -136,7 +155,8 @@ export default function PublicChatPage() {
   }, [router, toast]);
 
   useEffect(() => {
-    const messagesRef = query(ref(db, 'public_chat'), limitToLast(100));
+    // Show Full Chat - removed limitToLast(100)
+    const messagesRef = ref(db, 'public_chat');
     const unsubscribeMessages = onValue(messagesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -146,6 +166,8 @@ export default function PublicChatPage() {
         }));
         setMessages(msgList.sort((a, b) => a.timestamp - b.timestamp));
         setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      } else {
+        setMessages([]);
       }
     });
 
@@ -180,14 +202,12 @@ export default function PublicChatPage() {
 
     if (text.startsWith('//225')) {
       setInput("");
-      setInvestigationState({ active: true, status: "System is Currently Investigation This Chat Server" });
-      
-      setTimeout(() => {
-        setInvestigationState(prev => ({ ...prev, status: "Security Scanning successfully" }));
-        setTimeout(() => {
-          setInvestigationState({ active: false, status: "" });
-        }, 3000);
-      }, 15000);
+      // Trigger global investigation for everyone
+      set(ref(db, 'chat_system/investigation'), {
+        active: true,
+        startTime: Date.now(),
+        initiator: user.chatName
+      });
       return;
     }
 
@@ -238,7 +258,7 @@ export default function PublicChatPage() {
   };
 
   const handleBlockUser = (chatName: string) => {
-    const banUntil = Date.now() + (30 * 60 * 1000); // 30 mins
+    const banUntil = Date.now() + (30 * 60 * 1000);
     update(ref(db, `users/${chatName}`), { bannedUntil: banUntil });
     postSecurityBanMessage(chatName);
     toast({ title: "User Suspended", description: `User @${chatName} is now blocked.` });
@@ -261,7 +281,7 @@ export default function PublicChatPage() {
     
     const content = msg.text.toLowerCase();
     if (ABUSE_WORDS.some(word => content.includes(word))) {
-      const banUntil = Date.now() + (30 * 60 * 1000); // 30 mins
+      const banUntil = Date.now() + (30 * 60 * 1000);
       update(ref(db, `users/${msg.chatName}`), { bannedUntil: banUntil });
       postSecurityBanMessage(msg.chatName);
     }
@@ -313,7 +333,6 @@ export default function PublicChatPage() {
         const url = urlMatch[0];
         const lowerUrl = url.toLowerCase();
         
-        // Media Check
         const isImage = /\.(jpg|jpeg|png|gif|webp)$/.test(lowerUrl);
         const isVideo = /\.(mp4|webm|ogg)$/.test(lowerUrl);
         const isAudio = /\.(mp3|wav|ogg)$/.test(lowerUrl);
@@ -359,7 +378,6 @@ export default function PublicChatPage() {
           );
         }
 
-        // Generic Link
         return (
           <div className="space-y-3">
             <p className="text-sm italic opacity-60">This Message Contains an External Link</p>
@@ -397,7 +415,7 @@ export default function PublicChatPage() {
         </Button>
         <div className="flex flex-col flex-1">
           <h1 className="font-headline font-bold text-sm tracking-tight uppercase italic">Public Chat</h1>
-          <span className="text-[10px] text-emerald-400 font-bold tracking-widest uppercase">Server: EBMS-09</span>
+          <span className="text-[10px] text-emerald-400 font-bold tracking-widest uppercase">Server: EBMS-09 • Total Chat: {messages.length}</span>
         </div>
         {currentUserIsModerator && (
           <Button 
@@ -550,7 +568,6 @@ export default function PublicChatPage() {
         </form>
       </footer>
 
-      {/* Moderator Broadcast Dialog */}
       <Dialog open={isTransmitting} onOpenChange={setIsTransmitting}>
         <DialogContent className="bg-[#111111] border-white/10 text-white max-w-lg rounded-3xl p-6">
           <DialogHeader>
@@ -670,7 +687,6 @@ export default function PublicChatPage() {
         </DialogContent>
       </Dialog>
 
-      {/* User Win Pop-up */}
       <Dialog open={!!incomingWin} onOpenChange={(open) => !open && closeWinDialog()}>
         <DialogContent className="bg-black border-accent/50 text-white max-w-sm rounded-[2rem] p-8 text-center border-none shadow-[0_0_80px_rgba(0,255,255,0.2)] animate-in zoom-in-95 duration-500">
           <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none rounded-[2rem]">
@@ -721,7 +737,6 @@ export default function PublicChatPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Full Screen Image Viewer */}
       {fullScreenImage && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-300">
           <Button 
