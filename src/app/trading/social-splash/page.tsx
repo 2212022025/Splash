@@ -115,6 +115,13 @@ function SocialSplashContent() {
 
   const getNetworkTime = () => Date.now() + serverOffset;
 
+  const formatCount = (count: number) => {
+    if (count >= 1000) {
+      return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    }
+    return count.toString();
+  };
+
   useEffect(() => {
     const offsetRef = ref(db, ".info/serverTimeOffset");
     const unsubscribe = onValue(offsetRef, (snap) => {
@@ -603,7 +610,7 @@ function SocialSplashContent() {
               <div className="flex items-center gap-6 pt-2">
                 <button onClick={() => handleLike(post.id, post.likes)} className={cn("flex items-center gap-1.5", post.likes?.[user?.chatName] ? 'text-red-500' : mutedText)}>
                   <Heart size={18} fill={post.likes?.[user?.chatName] ? 'currentColor' : 'none'} />
-                  <span className="text-xs font-bold">{currentLikes}</span>
+                  <span className="text-xs font-bold">{formatCount(currentLikes)}</span>
                 </button>
                 <button onClick={() => setViewingCommentsFor(post)} className={cn("flex items-center gap-1.5", mutedText)}>
                   <MessageCircle size={18} />
@@ -612,7 +619,7 @@ function SocialSplashContent() {
                 <button onClick={() => handleShare(post.id)} className={cn(mutedText)}><Share2 size={18} /></button>
                 <div className={cn("flex items-center gap-1.5 ml-auto", mutedText)}>
                   <Eye size={18} />
-                  <span className="text-xs font-bold">{currentViews}</span>
+                  <span className="text-xs font-bold">{formatCount(currentViews)}</span>
                 </div>
               </div>
 
@@ -656,7 +663,7 @@ function SocialSplashContent() {
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {!isCurrentUserVerified ? (
               <div className="bg-amber-500/10 p-8 rounded-3xl text-center space-y-4 border border-amber-500/20">
-                <span className="text-5xl font-black block">{Math.max(0, MONETIZATION_THRESHOLD - Math.floor(currentUserStats.views))}</span>
+                <span className="text-5xl font-black block">{formatCount(Math.max(0, MONETIZATION_THRESHOLD - Math.floor(currentUserStats.views)))}</span>
                 <p className="text-[11px] font-bold uppercase opacity-60 tracking-[0.2em]">Views Left to Monetization</p>
                 <p className="text-xs text-amber-500/60 leading-relaxed">Reach 1,000 combined thread views to unlock the neural payout network.</p>
               </div>

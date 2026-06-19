@@ -38,6 +38,13 @@ export default function PostSharePage() {
 
   const getNetworkTime = () => Date.now() + serverOffset;
 
+  const formatCount = (count: number) => {
+    if (count >= 1000) {
+      return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    }
+    return count.toString();
+  };
+
   const getDisplayedViews = (p: SocialPost) => {
     const baseViews = p.views || 0;
     if (!p.targetViews || !p.timestamp) return baseViews;
@@ -132,7 +139,7 @@ export default function PostSharePage() {
           <div className="pt-6 border-t border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Eye size={16} className="text-white/20" />
-              <span className="text-xs font-bold text-white/40">{getDisplayedViews(post)} Views</span>
+              <span className="text-xs font-bold text-white/40">{formatCount(getDisplayedViews(post))} Views</span>
             </div>
             <Button 
               onClick={() => router.push('/trading/social-splash')}
