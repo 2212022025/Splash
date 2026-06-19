@@ -15,7 +15,11 @@ import { useToast } from '@/hooks/use-toast';
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ username: string; email: string; chatName: string } | null>(null);
-  const [suspensionInfo, setSuspensionInfo] = useState<{ active: boolean; remaining: number }>({ active: false, remaining: 0 });
+  const [suspensionInfo, setSuspensionInfo] = useState<{ active: boolean; remaining: number; isPermanent: boolean }>({ 
+    active: false, 
+    remaining: 0, 
+    isPermanent: false 
+  });
   const [serverOffset, setServerOffset] = useState(0);
   const { toast } = useToast();
 
@@ -29,17 +33,21 @@ export default function Home() {
 
   const getNetworkTime = useCallback(() => Date.now() + serverOffset, [serverOffset]);
 
-  const checkSuspension = useCallback((bannedUntil: number | null = null) => {
+  const checkSuspension = useCallback((bannedUntil: number | null = null, status: number = 0) => {
+    if (status === 2) {
+      setSuspensionInfo({ active: true, remaining: 0, isPermanent: true });
+      return true;
+    }
     if (bannedUntil) {
       const networkTime = getNetworkTime();
       const remainingMs = bannedUntil - networkTime;
       if (remainingMs > 0) {
         const remainingMinutes = Math.ceil(remainingMs / 60000);
-        setSuspensionInfo({ active: true, remaining: remainingMinutes });
+        setSuspensionInfo({ active: true, remaining: remainingMinutes, isPermanent: false });
         return true;
       }
     }
-    setSuspensionInfo({ active: false, remaining: 0 });
+    setSuspensionInfo({ active: false, remaining: 0, isPermanent: false });
     return false;
   }, [getNetworkTime]);
 
@@ -79,28 +87,33 @@ export default function Home() {
 
   useEffect(() => {
     if (user) {
-      const banRef = ref(db, `users/${user.chatName}/bannedUntil`);
-      const unsubscribe = onValue(banRef, (snapshot) => {
+      const userRef = ref(db, `users/${user.chatName}`);
+      const unsubscribe = onValue(userRef, (snapshot) => {
         if (snapshot.exists()) {
-          const bannedUntil = snapshot.val();
+          const userData = snapshot.val();
+          const bannedUntil = userData.bannedUntil;
+          const status = userData.status || 0;
           const networkTime = getNetworkTime();
-          if (bannedUntil > networkTime) {
+          
+          if (status === 2 || (bannedUntil && bannedUntil > networkTime)) {
             toast({
               variant: "destructive",
               title: "Policy Violation",
-              description: "Your Account is Banned"
+              description: status === 2 
+                ? "There Are Paranormal Activity In Your Account it has been Permanently Suspended"
+                : "Your Account is Banned"
             });
             
             setTimeout(() => {
               sessionStorage.removeItem('splash_session_user');
               setUser(null);
-              checkSuspension(bannedUntil);
+              checkSuspension(bannedUntil, status);
             }, 3000);
           } else {
-            setSuspensionInfo({ active: false, remaining: 0 });
+            setSuspensionInfo({ active: false, remaining: 0, isPermanent: false });
           }
         } else {
-          setSuspensionInfo({ active: false, remaining: 0 });
+          setSuspensionInfo({ active: false, remaining: 0, isPermanent: false });
         }
       });
       return () => unsubscribe();
@@ -150,17 +163,23 @@ export default function Home() {
             <div className="w-16 h-16 bg-destructive/20 rounded-full flex items-center justify-center mb-4 animate-pulse border border-destructive/30">
               <ShieldAlert size={32} className="text-destructive" />
             </div>
-            <DialogTitle className="font-headline text-2xl uppercase italic tracking-tighter text-destructive">Account Suspended</DialogTitle>
+            <DialogTitle className="font-headline text-2xl uppercase italic tracking-tighter text-destructive">
+              {suspensionInfo.isPermanent ? "Permanently Suspended" : "Account Suspended"}
+            </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <p className="text-sm text-white/80 leading-relaxed font-bold">
-              There Are paranormal Activity in Your Account it has been Temporarily Suspended
+              {suspensionInfo.isPermanent 
+                ? "There Are Paranormal Activity In Your Account it has been Permanently Suspended"
+                : "There Are paranormal Activity in Your Account it has been Temporarily Suspended"}
             </p>
-            <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-              <p className="text-[10px] uppercase text-white/30 tracking-[0.2em] font-bold mb-1">Status</p>
-              <p className="font-bold text-lg text-destructive">Suspension end in {suspensionInfo.remaining} mints</p>
-            </div>
+            {!suspensionInfo.isPermanent && (
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                <p className="text-[10px] uppercase text-white/30 tracking-[0.2em] font-bold mb-1">Status</p>
+                <p className="font-bold text-lg text-destructive">Suspension end in {suspensionInfo.remaining} mints</p>
+              </div>
+            )}
             <Button 
               variant="outline" 
               className="w-full rounded-xl border-white/10 hover:bg-white/5 text-white/60 hover:text-white mt-2"

@@ -51,6 +51,16 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
         ) as any;
 
         if (foundUser) {
+          if (foundUser.status === 2) {
+            toast({ 
+              variant: "destructive", 
+              title: "Account Suspended", 
+              description: "There Are Paranormal Activity In Your Account it has been Permanently Suspended" 
+            });
+            setIsLoading(false);
+            return;
+          }
+
           if (foundUser.bannedUntil && foundUser.bannedUntil > Date.now()) {
             toast({ 
               variant: "destructive", 
@@ -108,6 +118,7 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
           username, 
           email, 
           chatName, 
+          status: 0,
           createdAt: Date.now(),
           lastLoginAt: Date.now(),
           lastLoginDate: new Date().toLocaleString()
@@ -129,7 +140,6 @@ export function AuthScreen({ onLoginSuccess, onBannedAttempt }: AuthScreenProps)
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a] relative overflow-hidden">
-      {/* Brand Background Image */}
       <div className="absolute inset-0 z-0 opacity-10">
         <img 
           src="https://files.catbox.moe/d9bnza.jpg" 
