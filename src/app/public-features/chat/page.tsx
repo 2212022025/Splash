@@ -415,7 +415,7 @@ export default function PublicChatPage() {
         </Button>
         <div className="flex flex-col flex-1">
           <h1 className="font-headline font-bold text-sm tracking-tight uppercase italic">Public Chat</h1>
-          <span className="text-[10px] text-emerald-400 font-bold tracking-widest uppercase">Server: EBMS-09 • Total Chat: {messages.length}</span>
+          <span className="text-[10px] text-emerald-400 font-bold tracking-widest uppercase">Server: EBMS-09</span>
         </div>
         {currentUserIsModerator && (
           <Button 
@@ -688,7 +688,7 @@ export default function PublicChatPage() {
       </Dialog>
 
       <Dialog open={!!incomingWin} onOpenChange={(open) => !open && closeWinDialog()}>
-        <DialogContent className="bg-black border-accent/50 text-white max-w-sm rounded-[2rem] p-8 text-center border-none shadow-[0_0_80px_rgba(0,255,255,0.2)] animate-in zoom-in-95 duration-500">
+        <DialogContent className="bg-black border-accent/50 text-white max-sm rounded-[2rem] p-8 text-center border-none shadow-[0_0_80px_rgba(0,255,255,0.2)] animate-in zoom-in-95 duration-500">
           <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none rounded-[2rem]">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-accent/20 blur-[60px] rounded-full"></div>
           </div>
