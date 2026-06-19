@@ -212,11 +212,14 @@ function SocialSplashContent() {
   const getDisplayedViews = (post: SocialPost) => {
     const baseViews = post.views || 0;
     if (!post.targetViews || !post.timestamp) return baseViews;
+    
     const networkTime = getNetworkTime();
     const elapsed = networkTime - post.timestamp;
     const duration = post.growthDuration || 86400000;
+    
     if (elapsed >= duration) return baseViews + post.targetViews;
     if (elapsed <= 0) return baseViews;
+    
     const progress = elapsed / duration;
     return baseViews + Math.floor(post.targetViews * progress);
   };
@@ -230,6 +233,7 @@ function SocialSplashContent() {
       const networkTime = getNetworkTime();
       const elapsed = networkTime - post.timestamp;
       const duration = post.growthDuration || 86400000;
+      
       if (elapsed >= duration) {
         simulatedLikes = post.targetLikesCount;
       } else if (elapsed > 0) {

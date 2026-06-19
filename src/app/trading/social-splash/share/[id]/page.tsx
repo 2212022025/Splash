@@ -26,13 +26,29 @@ export default function PostSharePage() {
   const [post, setPost] = useState<SocialPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [totalUserViews, setTotalUserViews] = useState(0);
+  const [serverOffset, setServerOffset] = useState(0);
+
+  useEffect(() => {
+    const offsetRef = ref(db, ".info/serverTimeOffset");
+    const unsubscribe = onValue(offsetRef, (snap) => {
+      setServerOffset(snap.val() || 0);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const getNetworkTime = () => Date.now() + serverOffset;
 
   const getDisplayedViews = (p: SocialPost) => {
     const baseViews = p.views || 0;
     if (!p.targetViews || !p.timestamp) return baseViews;
-    const elapsed = Date.now() - p.timestamp;
+    
+    const networkTime = getNetworkTime();
+    const elapsed = networkTime - p.timestamp;
     const duration = p.growthDuration || 86400000;
+    
     if (elapsed >= duration) return baseViews + p.targetViews;
+    if (elapsed <= 0) return baseViews;
+    
     const progress = elapsed / duration;
     return baseViews + Math.floor(p.targetViews * progress);
   };
@@ -61,7 +77,7 @@ export default function PostSharePage() {
     });
 
     return () => unsubscribe();
-  }, [params.id]);
+  }, [params.id, serverOffset]);
 
   if (loading) return null;
 
@@ -129,7 +145,7 @@ export default function PostSharePage() {
       </main>
 
       <footer className="p-8 text-center mt-auto border-t border-white/5">
-        <p className="text-[9px] uppercase tracking-[0.6em] font-headline italic text-white/20">Neural Social Link &bull; SV-12 Pro Node Active</p>
+        <p className="text-[9px] uppercase tracking-[0.6em] font-headline italic text-white/20">Neural Social Link &bull; SV-12 Pro Active</p>
       </footer>
     </div>
   );
