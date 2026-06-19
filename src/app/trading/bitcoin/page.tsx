@@ -12,7 +12,18 @@ import { useToast } from '@/hooks/use-toast';
 export default function BitcoinTradingPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [serverOffset, setServerOffset] = useState(0);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const offsetRef = ref(rtdb, ".info/serverTimeOffset");
+    const unsubscribe = onValue(offsetRef, (snap) => {
+      setServerOffset(snap.val() || 0);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const getNetworkTime = () => Date.now() + serverOffset;
 
   useEffect(() => {
     const sessionUser = sessionStorage.getItem('splash_session_user');
@@ -25,12 +36,13 @@ export default function BitcoinTradingPage() {
       const found = JSON.parse(sessionUser);
       setUser(found);
 
-      // Real-time ban listener
+      // Real-time ban listener with synchronized time
       const userBanRef = ref(rtdb, `users/${found.chatName}/bannedUntil`);
       const unsubscribe = onValue(userBanRef, (snapshot) => {
         if (snapshot.exists()) {
           const bannedUntil = snapshot.val();
-          if (bannedUntil > Date.now()) {
+          const networkTime = getNetworkTime();
+          if (bannedUntil > networkTime) {
             toast({
               variant: "destructive",
               title: "Policy Violation",
@@ -49,7 +61,7 @@ export default function BitcoinTradingPage() {
     } catch (e) {
       router.push('/');
     }
-  }, [router, toast]);
+  }, [router, toast, serverOffset]);
 
   if (!user) return null;
 

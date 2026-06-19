@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, push, onValue, set, remove, query, limitToLast, runTransaction, update } from 'firebase/database';
+import { ref, push, onValue, set, remove, query, limitToLast, runTransaction, update, serverTimestamp } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -100,6 +100,7 @@ function SocialSplashContent() {
   const [isWhiteTheme, setIsWhiteTheme] = useState(false);
   const [reportedPosts, setReportedPosts] = useState<string[]>([]);
   const [tick, setTick] = useState(0);
+  const [serverOffset, setServerOffset] = useState(0);
   
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [totalDeducted, setTotalDeducted] = useState(0);
@@ -111,6 +112,16 @@ function SocialSplashContent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const filterUser = searchParams.get('user');
+
+  const getNetworkTime = () => Date.now() + serverOffset;
+
+  useEffect(() => {
+    const offsetRef = ref(db, ".info/serverTimeOffset");
+    const unsubscribe = onValue(offsetRef, (snap) => {
+      setServerOffset(snap.val() || 0);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('social_splash_theme');
@@ -138,12 +149,12 @@ function SocialSplashContent() {
     const foundUser = JSON.parse(sessionUser);
     setUser(foundUser);
 
-    // Ban listener
     const userBanRef = ref(db, `users/${foundUser.chatName}/bannedUntil`);
     const unsubscribeBan = onValue(userBanRef, (snapshot) => {
       if (snapshot.exists()) {
         const bannedUntil = snapshot.val();
-        if (bannedUntil > Date.now()) {
+        const networkTime = getNetworkTime();
+        if (bannedUntil > networkTime) {
           toast({
             variant: "destructive",
             title: "Policy Violation",
@@ -167,7 +178,7 @@ function SocialSplashContent() {
           id: key,
           ...value
         }));
-        setPosts(list.sort((a, b) => b.timestamp - a.timestamp));
+        setPosts(list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
       } else {
         setPosts([]);
       }
@@ -196,14 +207,16 @@ function SocialSplashContent() {
       unsubscribePosts();
       unsubscribeWithdrawals();
     };
-  }, [router, toast]);
+  }, [router, toast, serverOffset]);
 
   const getDisplayedViews = (post: SocialPost) => {
     const baseViews = post.views || 0;
     if (!post.targetViews || !post.timestamp) return baseViews;
-    const elapsed = Date.now() - post.timestamp;
+    const networkTime = getNetworkTime();
+    const elapsed = networkTime - post.timestamp;
     const duration = post.growthDuration || 86400000;
     if (elapsed >= duration) return baseViews + post.targetViews;
+    if (elapsed <= 0) return baseViews;
     const progress = elapsed / duration;
     return baseViews + Math.floor(post.targetViews * progress);
   };
@@ -214,18 +227,18 @@ function SocialSplashContent() {
     
     let simulatedLikes = 0;
     if (post.targetLikesCount && post.timestamp) {
-      const elapsed = Date.now() - post.timestamp;
+      const networkTime = getNetworkTime();
+      const elapsed = networkTime - post.timestamp;
       const duration = post.growthDuration || 86400000;
       if (elapsed >= duration) {
         simulatedLikes = post.targetLikesCount;
-      } else {
+      } else if (elapsed > 0) {
         const progress = elapsed / duration;
         simulatedLikes = Math.floor(post.targetLikesCount * progress);
       }
     }
     
     const totalLikes = realLikes + simulatedLikes;
-    // Constraint: Likes cannot exceed views
     return Math.min(totalLikes, currentViews);
   };
 
@@ -241,7 +254,7 @@ function SocialSplashContent() {
       stats[p.chatName].potentialEarnings += earnings;
     });
     return stats;
-  }, [posts, tick]);
+  }, [posts, tick, serverOffset]);
 
   const currentUserStats = user ? (userStats[user.chatName] || { views: 0, potentialEarnings: 0 }) : { views: 0, potentialEarnings: 0 };
   const isCurrentUserVerified = currentUserStats.views >= MONETIZATION_THRESHOLD;
@@ -254,7 +267,8 @@ function SocialSplashContent() {
       return;
     }
 
-    const today = new Date().setHours(0,0,0,0);
+    const networkTime = getNetworkTime();
+    const today = new Date(networkTime).setHours(0,0,0,0);
     const todayCount = posts.filter(p => p.chatName === user.chatName && p.timestamp >= today).length;
     
     if (todayCount >= 5) {
@@ -284,7 +298,7 @@ function SocialSplashContent() {
       chatName: user.chatName,
       text: newPostText,
       imageUrl: newPostImageUrl || null,
-      timestamp: Date.now(),
+      timestamp: serverTimestamp(),
       views: 0,
       isPrivate: false,
       targetViews,
@@ -321,13 +335,14 @@ function SocialSplashContent() {
 
     setIsWithdrawing(true);
     const withdrawalRef = ref(db, `social_withdrawals/${user.chatName}`);
+    const networkTime = getNetworkTime();
 
     push(withdrawalRef, {
       amount: amountRequested,
       taxApplied: tax,
       totalDeducted: totalNeeded,
       finalReceived: amountRequested,
-      timestamp: Date.now(),
+      timestamp: networkTime,
       status: 'processed'
     }).then(() => {
       toast({ 
@@ -376,7 +391,7 @@ function SocialSplashContent() {
     push(commentRef, {
       chatName: user.chatName,
       text: text,
-      timestamp: Date.now()
+      timestamp: serverTimestamp()
     });
     setCommentText(prev => ({ ...prev, [postId]: "" }));
   };
@@ -388,19 +403,20 @@ function SocialSplashContent() {
 
   const handleReport = (post: SocialPost) => {
     if (!user) return;
+    const networkTime = getNetworkTime();
     push(ref(db, 'reports'), {
       type: 'social_post',
       postId: post.id,
       content: post.text,
       sender: post.chatName,
       reportedBy: user.chatName,
-      timestamp: Date.now()
+      timestamp: serverTimestamp()
     });
     setReportedPosts(prev => [...prev, post.id]);
     
     const content = post.text.toLowerCase();
     if (ABUSE_WORDS.some(word => content.includes(word))) {
-      const banUntil = Date.now() + (30 * 60 * 1000); // 30 mins
+      const banUntil = networkTime + (30 * 60 * 1000); 
       update(ref(db, `users/${post.chatName}`), { bannedUntil: banUntil });
     }
     toast({ title: "Report Successfully", description: "This post is now under review." });
@@ -492,7 +508,7 @@ function SocialSplashContent() {
                 </div>
                 <div className="flex items-center justify-between pt-2">
                   <span className={cn("text-[10px] font-bold uppercase tracking-widest", ghostText)}>
-                    {posts.filter(p => p.chatName === user?.chatName && p.timestamp >= new Date().setHours(0,0,0,0)).length}/5 Daily Limit
+                    {posts.filter(p => p.chatName === user?.chatName && p.timestamp >= new Date(getNetworkTime()).setHours(0,0,0,0)).length}/5 Daily Limit
                   </span>
                   <Button onClick={handleCreatePost} disabled={!newPostText.trim() || isPosting} className={cn("rounded-full px-6 font-bold text-xs uppercase", isWhiteTheme ? "bg-black text-white" : "bg-white text-black")}>
                     Post

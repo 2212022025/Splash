@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, push, onValue, remove, set, query, get, child, update } from 'firebase/database';
+import { ref, push, onValue, remove, set, query, get, child, update, serverTimestamp } from 'firebase/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Send, MoreVertical, Trash2, Flag, ShieldCheck, Clock, User, ShieldAlert, Zap, X, Check, Copy, UserX, UserCheck, ExternalLink, Image as ImageIcon, Film, Music } from 'lucide-react';
@@ -53,12 +53,23 @@ export default function PublicChatPage() {
   const [isMultiCode, setIsMultiCode] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [investigationState, setInvestigationState] = useState<{ active: boolean; status: string }>({ active: false, status: "" });
+  const [serverOffset, setServerOffset] = useState(0);
   
   const [incomingWin, setIncomingWin] = useState<{ code: string } | null>(null);
 
   const router = useRouter();
   const { toast } = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const getNetworkTime = () => Date.now() + serverOffset;
+
+  useEffect(() => {
+    const offsetRef = ref(db, ".info/serverTimeOffset");
+    const unsubscribe = onValue(offsetRef, (snap) => {
+      setServerOffset(snap.val() || 0);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const sessionUser = sessionStorage.getItem('splash_session_user');
@@ -75,7 +86,8 @@ export default function PublicChatPage() {
       const unsubscribeBan = onValue(userBanRef, (snapshot) => {
         if (snapshot.exists()) {
           const bannedUntil = snapshot.val();
-          const isActive = bannedUntil > Date.now();
+          const networkTime = getNetworkTime();
+          const isActive = bannedUntil > networkTime;
           setIsBlocked(isActive);
 
           if (isActive) {
@@ -130,11 +142,12 @@ export default function PublicChatPage() {
       const unsubscribeInvestigation = onValue(investigationRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
-          const elapsed = Date.now() - data.startTime;
+          const networkTime = getNetworkTime();
+          const elapsed = networkTime - data.startTime;
           
-          if (elapsed < 15000) {
+          if (elapsed < 15000 && elapsed > 0) {
             setInvestigationState({ active: true, status: "System is Currently Investigation This Chat Server" });
-          } else if (elapsed < 18000) {
+          } else if (elapsed >= 15000 && elapsed < 18000) {
             setInvestigationState({ active: true, status: "Security Scanning successfully" });
           } else {
             setInvestigationState({ active: false, status: "" });
@@ -152,10 +165,9 @@ export default function PublicChatPage() {
     } catch (e) {
       router.push('/');
     }
-  }, [router, toast]);
+  }, [router, toast, serverOffset]);
 
   useEffect(() => {
-    // Show Full Chat - removed limitToLast(100)
     const messagesRef = ref(db, 'public_chat');
     const unsubscribeMessages = onValue(messagesRef, (snapshot) => {
       const data = snapshot.val();
@@ -164,7 +176,7 @@ export default function PublicChatPage() {
           id: key,
           ...value
         }));
-        setMessages(msgList.sort((a, b) => a.timestamp - b.timestamp));
+        setMessages(msgList.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)));
         setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
       } else {
         setMessages([]);
@@ -189,7 +201,7 @@ export default function PublicChatPage() {
       chatName: 'Security System',
       username: 'Security System',
       text: `System has Detected Abnormal Activity with account @${chatName} It has been Temporarily Suspended`,
-      timestamp: Date.now(),
+      timestamp: serverTimestamp(),
       isSecurity: true,
       isModerator: false
     });
@@ -202,10 +214,9 @@ export default function PublicChatPage() {
 
     if (text.startsWith('//225')) {
       setInput("");
-      // Trigger global investigation for everyone
       set(ref(db, 'chat_system/investigation'), {
         active: true,
-        startTime: Date.now(),
+        startTime: serverTimestamp(),
         initiator: user.chatName
       });
       return;
@@ -218,7 +229,7 @@ export default function PublicChatPage() {
       chatName: user.chatName,
       username: user.username,
       text: text,
-      timestamp: Date.now(),
+      timestamp: serverTimestamp(),
       isModerator: isModerator
     });
 
@@ -226,6 +237,7 @@ export default function PublicChatPage() {
   };
 
   const handleTransmissionSend = async () => {
+    const networkTime = getNetworkTime();
     if (transmissionMode === 'all') {
       if (!singleCode.trim()) return;
       const usersSnap = await get(ref(db, 'users'));
@@ -234,7 +246,7 @@ export default function PublicChatPage() {
         Object.keys(users).forEach(chatName => {
           set(ref(db, `transmissions/${chatName}`), {
             code: singleCode,
-            timestamp: Date.now()
+            timestamp: networkTime
           });
         });
       }
@@ -244,7 +256,7 @@ export default function PublicChatPage() {
         if (code.trim()) {
           set(ref(db, `transmissions/${chatName}`), {
             code: code,
-            timestamp: Date.now()
+            timestamp: networkTime
           });
         }
       });
@@ -258,7 +270,8 @@ export default function PublicChatPage() {
   };
 
   const handleBlockUser = (chatName: string) => {
-    const banUntil = Date.now() + (30 * 60 * 1000);
+    const networkTime = getNetworkTime();
+    const banUntil = networkTime + (30 * 60 * 1000);
     update(ref(db, `users/${chatName}`), { bannedUntil: banUntil });
     postSecurityBanMessage(chatName);
     toast({ title: "User Suspended", description: `User @${chatName} is now blocked.` });
@@ -271,17 +284,18 @@ export default function PublicChatPage() {
 
   const handleReport = (msg: ChatMessage) => {
     if (!user) return;
+    const networkTime = getNetworkTime();
     push(ref(db, 'reports'), { 
       type: 'public_chat',
       messageId: msg.id, 
       sender: msg.chatName, 
       content: msg.text, 
-      timestamp: Date.now() 
+      timestamp: serverTimestamp() 
     });
     
     const content = msg.text.toLowerCase();
     if (ABUSE_WORDS.some(word => content.includes(word))) {
-      const banUntil = Date.now() + (30 * 60 * 1000);
+      const banUntil = networkTime + (30 * 60 * 1000);
       update(ref(db, `users/${msg.chatName}`), { bannedUntil: banUntil });
       postSecurityBanMessage(msg.chatName);
     }
@@ -639,7 +653,7 @@ export default function PublicChatPage() {
                             @{u.chatName}
                           </label>
                           <div className="flex items-center gap-2">
-                            {u.bannedUntil && u.bannedUntil > Date.now() ? (
+                            {u.bannedUntil && u.bannedUntil > getNetworkTime() ? (
                               <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-400" onClick={() => handleUnblockUser(u.chatName)}>
                                 <UserCheck size={14} />
                               </Button>

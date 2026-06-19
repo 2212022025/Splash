@@ -16,11 +16,23 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ username: string; email: string; chatName: string } | null>(null);
   const [suspensionInfo, setSuspensionInfo] = useState<{ active: boolean; remaining: number }>({ active: false, remaining: 0 });
+  const [serverOffset, setServerOffset] = useState(0);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const offsetRef = ref(db, ".info/serverTimeOffset");
+    const unsubscribe = onValue(offsetRef, (snap) => {
+      setServerOffset(snap.val() || 0);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const getNetworkTime = useCallback(() => Date.now() + serverOffset, [serverOffset]);
 
   const checkSuspension = useCallback((bannedUntil: number | null = null) => {
     if (bannedUntil) {
-      const remainingMs = bannedUntil - Date.now();
+      const networkTime = getNetworkTime();
+      const remainingMs = bannedUntil - networkTime;
       if (remainingMs > 0) {
         const remainingMinutes = Math.ceil(remainingMs / 60000);
         setSuspensionInfo({ active: true, remaining: remainingMinutes });
@@ -29,20 +41,20 @@ export default function Home() {
     }
     setSuspensionInfo({ active: false, remaining: 0 });
     return false;
-  }, []);
+  }, [getNetworkTime]);
 
   useEffect(() => {
-    // Check for pending ban info from other pages (e.g. Chat logout)
+    // Check for pending ban info from other pages
     const pendingBan = sessionStorage.getItem('pending_ban_info');
     if (pendingBan) {
       const bannedUntil = parseInt(pendingBan);
-      if (bannedUntil > Date.now()) {
+      const networkTime = getNetworkTime();
+      if (bannedUntil > networkTime) {
         checkSuspension(bannedUntil);
       }
       sessionStorage.removeItem('pending_ban_info');
     }
 
-    // Restore session if it exists to allow navigation between sub-menus without logout
     const savedUser = sessionStorage.getItem('splash_session_user');
     if (savedUser) {
       try {
@@ -63,16 +75,16 @@ export default function Home() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [checkSuspension]);
+  }, [checkSuspension, getNetworkTime]);
 
-  // Sync remote ban for active user from their profile record
   useEffect(() => {
     if (user) {
       const banRef = ref(db, `users/${user.chatName}/bannedUntil`);
       const unsubscribe = onValue(banRef, (snapshot) => {
         if (snapshot.exists()) {
           const bannedUntil = snapshot.val();
-          if (bannedUntil > Date.now()) {
+          const networkTime = getNetworkTime();
+          if (bannedUntil > networkTime) {
             toast({
               variant: "destructive",
               title: "Policy Violation",
@@ -93,7 +105,7 @@ export default function Home() {
       });
       return () => unsubscribe();
     }
-  }, [user, checkSuspension, toast]);
+  }, [user, checkSuspension, getNetworkTime, toast]);
 
   const handleLoginSuccess = (userData: { username: string; email: string; chatName: string }) => {
     sessionStorage.setItem('splash_session_user', JSON.stringify(userData));

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -22,9 +23,20 @@ export default function AIServicesPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
+  const [serverOffset, setServerOffset] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const offsetRef = ref(db, ".info/serverTimeOffset");
+    const unsubscribe = onValue(offsetRef, (snap) => {
+      setServerOffset(snap.val() || 0);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const getNetworkTime = () => Date.now() + serverOffset;
 
   useEffect(() => {
     const sessionUser = sessionStorage.getItem('splash_session_user');
@@ -35,12 +47,13 @@ export default function AIServicesPage() {
 
     try {
       const found = JSON.parse(sessionUser);
-      // Listen for ban status
+      // Listen for ban status with synchronized time
       const userBanRef = ref(db, `users/${found.chatName}/bannedUntil`);
       const unsubscribe = onValue(userBanRef, (snapshot) => {
         if (snapshot.exists()) {
           const bannedUntil = snapshot.val();
-          if (bannedUntil > Date.now()) {
+          const networkTime = getNetworkTime();
+          if (bannedUntil > networkTime) {
             toast({
               variant: "destructive",
               title: "Policy Violation",
@@ -59,7 +72,7 @@ export default function AIServicesPage() {
     } catch (e) {
       router.push('/');
     }
-  }, [router, toast]);
+  }, [router, toast, serverOffset]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -85,7 +98,7 @@ export default function AIServicesPage() {
           email: "Guest",
           userMsg: userMsg,
           aiReply: aiReply,
-          time: new Date().toLocaleString()
+          time: new Date(getNetworkTime()).toLocaleString()
         })
       });
     } catch (error) {
@@ -95,7 +108,7 @@ export default function AIServicesPage() {
 
   const getReply = (msg: string) => {
     const text = msg.toLowerCase();
-    const now = new Date();
+    const now = new Date(getNetworkTime());
 
     if (text.includes("hi") || text.includes("hello")) return "Hello 👋 How can I help you?";
     if (text.includes("good morning")) return "Good morning ☀️ Hope you have a great day!";
