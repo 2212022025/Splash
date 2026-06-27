@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut, Zap, Gamepad2, BrainCircuit, UserCircle, Globe, TrendingUp } from 'lucide-react';
+import { LogOut, Zap, Gamepad2, BrainCircuit, UserCircle, Globe, TrendingUp, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import {
   Dialog,
@@ -152,6 +152,24 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Site Services */}
+        <a 
+          href="https://2212022025.github.io/site/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="block animate-in slide-in-from-bottom-10 duration-800 col-span-1 md:col-span-2"
+        >
+          <div className="bg-[#161616] border border-white/5 p-8 rounded-3xl flex items-center gap-8 hover:bg-rose-500/10 hover:border-rose-500/40 transition-all group active:scale-95 duration-200 h-full">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20 group-hover:scale-110 transition-transform">
+              <ExternalLink size={32} className="text-rose-400" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xl font-headline font-bold text-white uppercase tracking-tight">Site Services</span>
+              <span className="text-white/30 text-xs font-bold uppercase tracking-widest">System Portal 05</span>
+            </div>
+          </div>
+        </a>
       </main>
 
       <footer className="p-8 text-center mt-auto">
